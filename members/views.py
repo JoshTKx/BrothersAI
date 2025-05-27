@@ -4,21 +4,68 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.urls import reverse
 from django.http import HttpResponse
+from django.contrib.auth.models import User
+from django.db import IntegrityError
+from django.http import HttpResponseRedirect
+# members/views.py
 # Create your views here.
 #
 
-def login_user(request):
-    if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            messages.success(request, 'Login successful!')
-            return redirect(reverse('members:profile'))
-        else:
-            messages.error(request, 'Invalid username or password.')
-    return render(request, 'members/login.html')
-
 def homepage(request):
     return HttpResponse("Welcome to BrothersAI!")
+
+def login_view(request):
+    if request.method == "POST":
+
+        # Attempt to sign user in
+        username = request.POST["username"]
+        password = request.POST["password"]
+        user = authenticate(request, username=username, password=password)
+
+        # Check if authentication successful
+        if user is not None:
+            login(request, user)
+            return HttpResponseRedirect(reverse("home"))
+        else:
+            return render(request, "login.html", {
+                "message": "Invalid username and/or password."
+            })
+    else:
+        return render(request, "login.html")
+
+
+def logout_view(request):
+    logout(request)
+    return HttpResponseRedirect(reverse("index"))
+
+
+def register(request):
+    if request.method == "POST":
+        username = request.POST["username"]
+        email = request.POST["email"]
+        image = request.FILES ["profileimage"]
+
+        # Ensure password matches confirmation
+        password = request.POST["password"]
+        confirmation = request.POST["confirmation"]
+        if password != confirmation:
+            return render(request, "register.html", {
+                "message": "Passwords must match."
+            })
+
+        # Attempt to create new user
+        try:
+            user = User.objects.create_user(username, email, password)
+            user.save()
+            
+        except IntegrityError:
+            return render(request, "register.html", {
+                "message": "Username already taken."
+            })
+        login(request, user)
+        return HttpResponseRedirect(reverse("home"))
+    else:
+        return render(request, "register.html")
+
+def index(request):
+    return render(request, "index.html")

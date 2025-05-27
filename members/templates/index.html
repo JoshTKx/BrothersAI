@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class = "home">
+<div class ="home-content">
+
+
+
+<section class="intro-section">
+  
+  <div class="wrapper">
+    <div class="typing-demo">
+      <h1 >This is a HR application</h1>
+      <div class ="home-buttons">
+        <a  href="{% url 'login' %}"><button type="button" class="btn btn-primary">Login</button></a>
+        <a href="{% url 'register' %}"><button type="button" class="btn btn-primary">Register</button></a>
+      </div>
+      
+    </div>
+</div>
+</section>
+</div>
+</div>
+
+
+{% endblock %}

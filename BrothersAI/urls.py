@@ -20,7 +20,7 @@ from members import views  # Import views from the members app
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.homepage, name='homepage'),  # Root path
+    path('', views.index, name='homepage'),  # Root path
     path('members/', include('members.urls')),  # Include members app URLs
     path('members/', include('django.contrib.auth.urls')),  # Authentication URLs
 ]
