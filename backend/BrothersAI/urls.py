@@ -23,4 +23,5 @@ urlpatterns = [
     path('', views.index, name='homepage'),  # Root path
     path('members/', include('members.urls')),  # Include members app URLs
     path('members/', include('django.contrib.auth.urls')),  # Authentication URLs
+    path('api/', include('scheduler.urls')), # Timetable Scheduler URL
 ]

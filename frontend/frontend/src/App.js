@@ -7,7 +7,7 @@ function App() {
 
   const [moduleInput, setModuleInput] = useState('');
   const [modules, setModules] = useState([]);
-  const [nusModsCache, setNusModsCache] = useState(null);
+  const [nusModsCache, setNusModsCache] = useState([]);
   const [semester, setSemester] = useState('1');
   const [error, setError] = useState('');
   const [timetable, setTimetable] = useState(null);
@@ -39,11 +39,11 @@ function App() {
       return;
     }
     if (!isModuleValid(modCode)){
-      setError('Invalid module code: ${modCode}');
+      setError(`Invalid module code: ${modCode}`);
       return;
     }
     if (modules.includes(modCode)){
-      setError('Module ${modCode} is already added');
+      setError(`Module ${modCode} is already added`);
       return;
     }
     setModules([...modules, modCode]);
@@ -128,4 +128,4 @@ function App() {
   );
 }
 
-export default app
+export default App
