@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+
+{% block script %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function addToDo() {
+            // Get the input value and trim whitespace
+            const inputValue = document.getElementById("todoinput").value.trim();
+
+            // Check if input is empty
+            if (inputValue === '') {
+                alert("Please enter a task!");
+                return;
+            }
+
+            // Send input to the server via fetch
+            fetch(`/addtodo/${encodeURIComponent(inputValue)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Failed to add to-do item to the server.");
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    console.log("Server response:", result);
+
+                    // Create a new list item
+                    const li = document.createElement("li");
+                    li.classList.add("list-group-item", "d-flex", "justify-content-between", "align-items-center", "bg-light");
+                    li.textContent = inputValue;
+
+                    // Add a remove icon to the list item
+                    const removeIcon = document.createElement("ion-icon");
+                    removeIcon.setAttribute("name", "close-circle-outline");
+                    removeIcon.style.cursor = "pointer";
+                    removeIcon.classList.add("text-danger");
+                    removeIcon.addEventListener("click", () => li.remove());
+
+                    // Append the remove icon to the list item
+                    li.appendChild(removeIcon);
+
+                    // Append the list item to the unordered list
+                    document.getElementById("myUL").appendChild(li);
+
+                    // Clear the input field
+                    document.getElementById("todoinput").value = '';
+                })
+                .catch(error => {
+                    console.error("Error adding to-do item:", error);
+                    alert("An error occurred while adding the to-do item. Please try again.");
+                });
+        }
+        window.addToDo = addToDo;
+    });
+</script>
+{% endblock %}
+
+{% block body %}
+<!-- Include Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .header-title {
+        font-family: 'Poppins', sans-serif;
+        font-size: 3rem;
+        font-weight: 600;
+        color: #2C3E50;
+    }
+
+    .sub-title {
+        font-size: 1.2rem;
+        color: #7F8C8D;
+    }
+
+    .btn-primary {
+        background-color: #3498DB;
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background-color: #2980B9;
+    }
+
+    .card {
+        border: none;
+    }
+
+    .card-title {
+        font-weight: 600;
+        color: #34495E;
+    }
+
+    .card-text {
+        color: #95A5A6;
+    }
+</style>
+
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="text-center mb-5">
+        <h1 class="header-title">Welcome to BrothersAI, {{ user.username }}!</h1>
+        <p class="sub-title">Streamline your workflow with smart scheduling and task management.</p>
+    </div>
+
+    <!-- Weekly Date Range -->
+    <div class="text-center mb-5">
+        <h3 class="text-secondary">Week Start: {{ startdate }}</h3>
+        <h3 class="text-secondary">Week End: {{ enddate }}</h3>
+    </div>
+</div>
+{% endblock %}

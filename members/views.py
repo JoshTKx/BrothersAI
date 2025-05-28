@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.http import HttpResponseRedirect
+from datetime import date, timedelta
 # members/views.py
 # Create your views here.
 #
@@ -69,3 +70,17 @@ def register(request):
 
 def index(request):
     return render(request, "index.html")
+
+def home(request):
+    user = request.user
+    today = date.today()
+    startdate = today -timedelta(days = today.weekday())
+    enddate = startdate + timedelta(days =6)
+    if user.is_authenticated:
+        return render(request, "home.html", {
+            "user": user,
+            "startdate": startdate,
+            "enddate": enddate
+        })
+    else:
+        return redirect('login')  # Redirect to login if not authenticated
