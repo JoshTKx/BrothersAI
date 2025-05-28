@@ -31,8 +31,19 @@ function App() {
     return nusModsCache && nusModsCache.some(mod => mod.moduleCode === code.toUpperCase());
   };
 
-  const addModule = () => {
+  const isModuleOfferedInSem = async (modCode) => {
+    try {
+      const res = await fetch(`https://api.nusmods.com/v2/2024-2025/modules/${modCode}.json`);
+      const data = await res.json();
+      return data.semesterData.some(s => String(s.semester) === semester);
+    } catch {
+      return false;
+    }
+  };
+
+  const addModule = async() => {
     const modCode = moduleInput.trim().toUpperCase();
+    const offered = await isModuleOfferedInSem(modCode);
     setError('');
     if (!modCode){
       setError('Please enter a module code');
@@ -46,9 +57,16 @@ function App() {
       setError(`Module ${modCode} is already added`);
       return;
     }
+    if (!offered) {
+      setError(`Module ${modCode} is not offered in selected semester`);
+      return;
+    }
     setModules([...modules, modCode]);
     setModuleInput('');
-    setError('');
+  };
+
+  const removeModule = (code) => {
+    setModules(modules.filter(m => m !== code));
   };
 
 
@@ -112,7 +130,9 @@ function App() {
 
       <ul>
         {modules.map((mod,i) => (
-          <li key={i}>{mod}</li>
+          <li key={i}>
+            {mod} <button onClick={() => removeModule(mod)}>X</button>
+          </li>
         ))}
       </ul>
 
