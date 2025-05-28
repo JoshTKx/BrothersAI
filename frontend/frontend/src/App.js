@@ -11,6 +11,7 @@ function App() {
   const [semester, setSemester] = useState('1');
   const [error, setError] = useState('');
   const [timetable, setTimetable] = useState(null);
+  const [invalidModules, setInvalidModules] = useState([]);
   
   // Fetch NUSMods module list and cache it
   useEffect(() => {
@@ -26,24 +27,40 @@ function App() {
     fetchModuleData();
   }, []);
 
+  useEffect(() => {
+    if (modules.length > 0) {
+      updateInvalidModules(modules, semester);
+    }
+  }, [semester, modules]);
+
   // Check if module code is valid(exists in NUSMods list)
   const isModuleValid = (code) => {
     return nusModsCache && nusModsCache.some(mod => mod.moduleCode === code.toUpperCase());
   };
 
-  const isModuleOfferedInSem = async (modCode) => {
+  const isModuleOfferedInSem = async (modCode, sem) => {
     try {
       const res = await fetch(`https://api.nusmods.com/v2/2024-2025/modules/${modCode}.json`);
       const data = await res.json();
-      return data.semesterData.some(s => String(s.semester) === semester);
+      return data.semesterData.some(s => String(s.semester) === sem);
     } catch {
       return false;
     }
   };
+  
+  // Update invalid module list based on semester currently selected
+  const updateInvalidModules = async (mods, sem) => {
+    const results = await Promise.all(
+      mods.map(async (code) => {
+        const offered = await isModuleOfferedInSem(code, sem);
+        return !offered ? code : null;
+      })
+    );
+    setInvalidModules(results.filter(Boolean));
+  };
 
-  const addModule = async() => {
+  const addModule = async () => {
     const modCode = moduleInput.trim().toUpperCase();
-    const offered = await isModuleOfferedInSem(modCode);
     setError('');
     if (!modCode){
       setError('Please enter a module code');
@@ -57,16 +74,42 @@ function App() {
       setError(`Module ${modCode} is already added`);
       return;
     }
+    const offered = await isModuleOfferedInSem(modCode, semester);
     if (!offered) {
-      setError(`Module ${modCode} is not offered in selected semester`);
+      setError(`Module ${modCode} is not offered in Semester ${semester}`);
       return;
     }
-    setModules([...modules, modCode]);
+    const updatedModules = [...modules, modCode];
+    setModules(updatedModules);
+    await updateInvalidModules(updatedModules,semester);
     setModuleInput('');
   };
 
-  const removeModule = (code) => {
-    setModules(modules.filter(m => m !== code));
+  const removeModule = async (code) => {
+    const updated = modules.filter(mod => mod !== code);
+    setModules(updated);
+    await updateInvalidModules(updated, semester);
+  };
+
+  const semesterChange = async (e) => {
+    const newSem = e.target.value;
+    setSemester(newSem);
+
+    // const results = await Promise.all(
+    //   modules.map(async (code) => {
+    //     const offered = await isModuleOfferedInSem(code, newSem);
+    //     return !offered ? code : null;
+    //   })
+    // );
+    // const invalids = results.filter(Boolean);
+    // setInvalidModules(invalids);
+  
+    // if (invalids.length > 0) {
+    //   const semLabel = newSem === '3' ? 'Special Term I' : newSem === '4' ? 'Special Term II' : `Semester ${newSem}`;
+    //   setError(`Please remove modules not offered in ${semLabel}: ${invalids.join(', ')}`);
+    // } else {
+    //   setError('');
+    // }
   };
 
 
@@ -75,6 +118,10 @@ function App() {
     setTimetable(null);
     if (modules.length === 0){
       setError('Please add at least 1 module');
+      return;
+    }
+    if (invalidModules.length > 0){
+      setError(`Please remove modules not offered in Semester ${semester}: ${invalidModules.join(', ')}`);
       return;
     }
 
@@ -130,8 +177,9 @@ function App() {
 
       <ul>
         {modules.map((mod,i) => (
-          <li key={i}>
-            {mod} <button onClick={() => removeModule(mod)}>X</button>
+          <li key={i} style={{color: invalidModules.includes(mod) ? 'red' : 'black'}}>
+            {mod} {invalidModules.includes(mod) && '(Not offered this semester)'}
+            <button onClick={() => removeModule(mod)} style={{marginLeft: '10px'}}>X</button>
           </li>
         ))}
       </ul>
