@@ -1,6 +1,9 @@
 from django.urls import path
-from .views import generate_timetable
+from . import views
+
 
 urlpatterns = [
-    path('generate-timetable/', generate_timetable, name = 'generate_timetable'),
+    path('modules/', views.get_module_list),
+    path('modules/<str:mod_code>/', views.get_module_detail),
+    path('generate-timetable/', views.generate_timetable),
 ]

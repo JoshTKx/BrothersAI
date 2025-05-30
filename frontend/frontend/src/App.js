@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import './Timetable.css';
 
+
+const baseURL = 'http://127.0.0.1:8000/';
+
 const timeToRow = (timeStr) => {
   const [hrs, mins] = timeStr.split(':').map(Number);
   return (hrs - 8) * 2 + (mins === 30 ? 2 : 1);
@@ -55,7 +58,8 @@ function App() {
   useEffect(() => {
     const fetchModuleData = async() => {
       try {
-        const res = await fetch('https://api.nusmods.com/v2/2024-2025/moduleList.json')
+        const res = await fetch(`${baseURL}api/modules/`)
+        if(!res.ok) throw new Error('Failed to fetch module list');
         const data = await res.json();
         setNusModsCache(data);
       } catch(err) {
@@ -78,7 +82,8 @@ function App() {
 
   const isModuleOfferedInSem = async (modCode, sem) => {
     try {
-      const res = await fetch(`https://api.nusmods.com/v2/2024-2025/modules/${modCode}.json`);
+      const res = await fetch(`${baseURL}api/modules/${modCode}`);
+      if(!res.ok) return false;
       const data = await res.json();
       return data.semesterData.some(s => String(s.semester) === sem);
     } catch {
@@ -148,7 +153,7 @@ function App() {
     }
 
     try {
-      const resp = await fetch('http://localhost:8000/api/generate-timetable/', {
+      const resp = await fetch(`${baseURL}api/generate-timetable/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -171,7 +176,7 @@ function App() {
 
   const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-  const displayTimetableGrid = () => {
+  const displayTimetableGrid = (timetable) => {
     const time = [];
     for (let i = 8; i < 21; i++) {
       time.push(`${i.toString().padStart(2, '0')}:00`);
@@ -197,6 +202,14 @@ function App() {
             ))}
           </React.Fragment>
         ))}
+
+        {/*Lesson block*/}
+        {timetable && 
+          Object.entries(timetable).flatMap(([modCode,lessons]) =>
+            lessons.map((lesson, idx) => {
+
+            }
+            ))}
       </div>
     );
   }
@@ -225,10 +238,10 @@ function App() {
       <button onClick={generateTimetable}>Generate Timetable</button>
 
       {timetable && (
-        <div style={{flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'auto'}}>
+        <div className="timetable-container" style={{flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'auto'}}>
           <h2>Timetable</h2>
-          <div style={{position: 'relative', marginTop: '2rem', flexGrow: 1 }}>
-            {displayTimetableGrid()}
+          <div className="timetable-wrapper" style={{position: 'relative', marginTop: '2rem', flexGrow: 1 }}>
+            {displayTimetableGrid(timetable)}
           </div>
         </div>
       )}
