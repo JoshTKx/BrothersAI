@@ -2,6 +2,43 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import './App.css';
 
+const timeToRow = (timeStr) => {
+  const [hrs, mins] = timeStr.split(':').map(Number);
+  return (hrs - 8) * 2 + (mins === 30 ? 2 : 1);
+};
+
+const getSemLabel = (sem) => {
+  return sem == '3' ? 'Special Term 1' :
+         sem == '4' ? 'Special Term 2' :
+         `Semester ${sem}`;
+};
+
+const SemesterSelect = ({semester, onChange}) => (
+  <label>
+    Semester:
+    <select value={semester} onChange={onChange}>
+      <option value={"1"}>Semester 1</option>
+      <option value={"2"}>Semester 2</option>
+      <option value={"3"}>Special Term 1</option>
+      <option value={"4"}>Special Term 2</option>
+    </select>
+  </label>
+);
+
+const ModuleList = ({modules, invalidModules, onRemove}) => (
+  <ul>
+    {modules.map((mod,i) => (
+      <li key={i} style={{color: invalidModules.includes(mod) ? 'red' : 'black'}}>
+        {mod} {invalidModules.includes(mod) && '(Not offered this semester)'}
+        <button onClick={() => onRemove(mod)} style={{marginLeft: '10px'}}>X</button>
+      </li>
+    ))}
+  </ul>
+);
+
+const ErrorDisplay = ({error}) => (
+  error ? <p style={{color: 'red'}}>{error}</p> : null
+);
 
 function App() {
 
@@ -50,13 +87,19 @@ function App() {
   
   // Update invalid module list based on semester currently selected
   const updateInvalidModules = async (mods, sem) => {
-    const results = await Promise.all(
+    const invalid = await Promise.all(
       mods.map(async (code) => {
         const offered = await isModuleOfferedInSem(code, sem);
         return !offered ? code : null;
       })
     );
-    setInvalidModules(results.filter(Boolean));
+    const filtered = invalid.filter(Boolean);
+    setInvalidModules(filtered);
+    if (filtered.length > 0){
+      setError(`Please remove modules not offered in ${getSemLabel(semester)}: ${invalidModules.join(', ')}`);
+    } else {
+      setError('');
+    }
   };
 
   const addModule = async () => {
@@ -74,9 +117,8 @@ function App() {
       setError(`Module ${modCode} is already added`);
       return;
     }
-    const offered = await isModuleOfferedInSem(modCode, semester);
-    if (!offered) {
-      setError(`Module ${modCode} is not offered in Semester ${semester}`);
+    if (!(await isModuleOfferedInSem(modCode, semester))) {
+      setError(`Module ${modCode} is not offered in ${getSemLabel(semester)}`);
       return;
     }
     const updatedModules = [...modules, modCode];
@@ -89,27 +131,6 @@ function App() {
     const updated = modules.filter(mod => mod !== code);
     setModules(updated);
     await updateInvalidModules(updated, semester);
-  };
-
-  const semesterChange = async (e) => {
-    const newSem = e.target.value;
-    setSemester(newSem);
-
-    // const results = await Promise.all(
-    //   modules.map(async (code) => {
-    //     const offered = await isModuleOfferedInSem(code, newSem);
-    //     return !offered ? code : null;
-    //   })
-    // );
-    // const invalids = results.filter(Boolean);
-    // setInvalidModules(invalids);
-  
-    // if (invalids.length > 0) {
-    //   const semLabel = newSem === '3' ? 'Special Term I' : newSem === '4' ? 'Special Term II' : `Semester ${newSem}`;
-    //   setError(`Please remove modules not offered in ${semLabel}: ${invalids.join(', ')}`);
-    // } else {
-    //   setError('');
-    // }
   };
 
 
@@ -151,17 +172,7 @@ function App() {
     <div className='App'>
       <h1>Timetable</h1>
 
-      <div>
-        <label>
-          Semester:
-          <select value={semester} onChange={(e) => setSemester(e.target.value)}>
-            <option value={"1"}>Semester 1</option>
-            <option value={"2"}>Semester 2</option>
-            <option value={"3"}>Special Term 1</option>
-            <option value={"4"}>Special Term 2</option>
-          </select>
-        </label>
-      </div>
+      <SemesterSelect semester={semester} onChange={(e) => setSemester(e.target.value)}/>
 
       <div>
         <input
@@ -173,23 +184,17 @@ function App() {
         <button onClick={addModule}>Add Module</button>
       </div>
 
-      {error && <p style={{color: 'red'}}>{error}</p>}
+      <ErrorDisplay error={error}/>
 
-      <ul>
-        {modules.map((mod,i) => (
-          <li key={i} style={{color: invalidModules.includes(mod) ? 'red' : 'black'}}>
-            {mod} {invalidModules.includes(mod) && '(Not offered this semester)'}
-            <button onClick={() => removeModule(mod)} style={{marginLeft: '10px'}}>X</button>
-          </li>
-        ))}
-      </ul>
+      <ModuleList modules={modules} invalidModules={invalidModules} onRemove={removeModule} />
 
       <button onClick={generateTimetable}>Generate Timetable</button>
 
       {timetable && (
         <div>
           <h2>Generate Timetable</h2>
-          <pre>{JSON.stringify(timetable, null, 2)}</pre>
+          <pre>{JSON.stringify(timetable,null,2)}</pre>
+
         </div>
       )}
     </div>
