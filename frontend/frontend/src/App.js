@@ -180,15 +180,17 @@ function App() {
     return (
       <div className='timetable-grid'>
         {/* Header row: empty top-left, then time*/}
-        <div className='timetable-cell header-cell'></div>
+        <div className='timetable-cell timetable-header'></div>
         {time.map(hr => (
-          <div className='timetable-cell header-cell' key={hr}>{hr}</div>
+          <div className='timetable-cell timetable-header' key={`header-${hr}`}>
+            {hr}
+          </div>
         ))}
         {/* Day rows*/}
         {weekdays.map(day => (
-          <React.Fragment key={day}>
+          <React.Fragment key={`row - ${day}`}>
             {/* Row label(day) */}
-            <div className='timetable-cell header-cell'>{day}</div>
+            <div className='timetable-cell timetable-header'>{day}</div>
             {/* Empty cells for each hour */}
             {time.map(hr => (
               <div className='timetable-cell' key={`${day}-${hr}`}></div>
@@ -202,17 +204,18 @@ function App() {
   return (
     <div className='App'>
       <h1>Timetable</h1>
+      <div className='controls'>
+        <SemesterSelect semester={semester} onChange={(e) => setSemester(e.target.value)}/>
 
-      <SemesterSelect semester={semester} onChange={(e) => setSemester(e.target.value)}/>
-
-      <div>
-        <input
-          type='text'
-          value={moduleInput}
-          onChange={(e) => setModuleInput(e.target.value)}
-          placeholder="Enter module code (e.g., CS1101S)"
-        />
-        <button onClick={addModule}>Add Module</button>
+        <div>
+          <input
+            type='text'
+            value={moduleInput}
+            onChange={(e) => setModuleInput(e.target.value)}
+            placeholder="Enter module code (e.g., CS1101S)"
+          />
+          <button onClick={addModule}>Add Module</button>
+        </div>
       </div>
 
       <ErrorDisplay error={error}/>
@@ -222,9 +225,9 @@ function App() {
       <button onClick={generateTimetable}>Generate Timetable</button>
 
       {timetable && (
-        <div>
+        <div style={{flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'auto'}}>
           <h2>Timetable</h2>
-          <div style={{position: 'relative', marginTop: '2rem' }}>
+          <div style={{position: 'relative', marginTop: '2rem', flexGrow: 1 }}>
             {displayTimetableGrid()}
           </div>
         </div>
