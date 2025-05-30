@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import './App.css';
+import './Timetable.css';
 
 const timeToRow = (timeStr) => {
   const [hrs, mins] = timeStr.split(':').map(Number);
@@ -168,6 +169,36 @@ function App() {
     }
   };
 
+  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+  const displayTimetableGrid = () => {
+    const time = [];
+    for (let i = 8; i < 21; i++) {
+      time.push(`${i.toString().padStart(2, '0')}:00`);
+    }
+
+    return (
+      <div className='timetable-grid'>
+        {/* Header row: empty top-left, then time*/}
+        <div className='timetable-cell header-cell'></div>
+        {time.map(hr => (
+          <div className='timetable-cell header-cell' key={hr}>{hr}</div>
+        ))}
+        {/* Day rows*/}
+        {weekdays.map(day => (
+          <React.Fragment key={day}>
+            {/* Row label(day) */}
+            <div className='timetable-cell header-cell'>{day}</div>
+            {/* Empty cells for each hour */}
+            {time.map(hr => (
+              <div className='timetable-cell' key={`${day}-${hr}`}></div>
+            ))}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className='App'>
       <h1>Timetable</h1>
@@ -192,9 +223,10 @@ function App() {
 
       {timetable && (
         <div>
-          <h2>Generate Timetable</h2>
-          <pre>{JSON.stringify(timetable,null,2)}</pre>
-
+          <h2>Timetable</h2>
+          <div style={{position: 'relative', marginTop: '2rem' }}>
+            {displayTimetableGrid()}
+          </div>
         </div>
       )}
     </div>

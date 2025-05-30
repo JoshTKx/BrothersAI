@@ -60,35 +60,3 @@ pre {
   overflow-x: auto;
 }
 
-
-.timetable-grid {
-  display: grid;
-  grid-template-columns: 100px repeat(5, 1fr); /* Time + Mon-Fri */
-  grid-template-rows: repeat(24, 40px); /* 8am-8pm */
-  border: 1px solid #ccc;
-}
-
-.timetable-grid div {
-  border: 1px solid #eee;
-  padding: 4px;
-  font-size: 12px;
-}
-
-.time-label {
-  background-color: #f9f9f9;
-  text-align: right;
-  padding-right: 6px;
-}
-
-.day-header {
-  background-color: #efefef;
-  font-weight: bold;
-  text-align: center;
-}
-
-.module-slot {
-  background-color: #d0ebff;
-  border: 1px solid #90caf9;
-  overflow: hidden;
-  font-size: 11px;
-}

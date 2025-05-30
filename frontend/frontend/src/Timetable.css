@@ -1,0 +1,21 @@
+.timetable-grid {
+    display: grid;
+    grid-template-columns: 100px repeat(13, 1fr); /* 1 for row label, 13 hours */
+    grid-auto-rows: 50px;
+    border: 1px solid #ccc;
+  }
+  
+  .timetable-cell {
+    border: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+  
+  .header-cell {
+    background-color: #f0f0f0;
+    font-weight: bold;
+  }
+  
+  
