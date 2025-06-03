@@ -1,0 +1,103 @@
+.login-container {
+    display: flex;
+    justify-content: center;      /* horizontally center */
+    align-items: flex-start;       /* align to top rather than center */
+    min-height: 80vh;              /* reduce overall height */
+    padding-top: 2rem;             /* add a little top padding if needed */
+    background-color: #f9fafb;
+    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
+    width: 100vw;
+    box-sizing: border-box;
+}
+
+.login-card {
+    background: white;
+    aspect-ratio: 1 / 1;           /* Makes it a square */
+    width: min(90vw, 400px);       /* Responsive: max 400px, but shrinks on small screens */
+    min-width: 260px;              /* Prevents it from getting too small */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
+    text-align: center;
+    padding: 2rem;
+    transition: width 0.2s, aspect-ratio 0.2s;
+}
+
+.login-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+    width: 100%;
+    max-width: 300px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #374151;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.submit-button {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #3b82f6;
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 1rem;
+}
+
+.submit-button:hover {
+    background-color: #2563eb;
+}
+
+.submit-button:disabled {
+    background-color: #93c5fd;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.success-message {
+    color: #10b981;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
