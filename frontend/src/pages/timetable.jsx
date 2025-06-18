@@ -6,8 +6,11 @@ import './Timetable.css';
 const baseURL = 'http://127.0.0.1:8000/';
 
 const timeToRow = (timeStr) => {
-  const [hrs, mins] = timeStr.split(':').map(Number);
-  return (hrs - 8) * 2 + (mins === 30 ? 2 : 1);
+  // Handle both "1200" and "12:00" formats
+  const normalized = timeStr.includes(":") ? timeStr : 
+                    `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
+  const [hrs, mins] = normalized.split(':').map(Number);
+  return (hrs - 8) * 2 + (mins >= 30 ? 1 : 0) + 2; // +2 for header rows
 };
 
 const getSemLabel = (sem) => {
@@ -43,6 +46,89 @@ const ErrorDisplay = ({error}) => (
   error ? <p style={{color: 'red'}}>{error}</p> : null
 );
 
+const LessonBlock = ({ modCode, lesson, onDragStart }) => {
+  return (
+    <div 
+      className="lesson-block" 
+      draggable
+      onDragStart={onDragStart}
+    >
+      <div>{modCode}</div>
+      <div>{lesson.venue}</div>
+      <div>{lesson.startTime}-{lesson.endTime}</div>
+      
+      {/* Dropdown to switch slots */}
+      <select 
+        onChange={(e) => handleSlotChange(modCode, e.target.value)}
+        value={JSON.stringify(lesson)}
+      >
+        {alternativeSlots[modCode]?.map((alt, i) => (
+          <option 
+            key={i} 
+            value={JSON.stringify(alt)}
+          >
+            {alt.day} {alt.startTime}-{alt.endTime} ({alt.venue})
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
+
+const handleSlotChange = (modCode, selectedValue) => {
+  const newLesson = JSON.parse(selectedValue);
+  setSelectedLessons(prev => ({
+    ...prev,
+    [modCode]: newLesson
+  }));
+  
+  // Check for clashes
+  if (hasClashes(selectedLessons, modCode, newLesson)) {
+    alert("This slot clashes with another lesson!");
+    return;
+  }
+};
+
+const hasClashes = (currentLessons, modifiedModCode, newLesson) => {
+  return Object.entries(currentLessons).some(([modCode, lesson]) => {
+    if (modCode === modifiedModCode) return false;
+    
+    return (
+      lesson.day === newLesson.day &&
+      (
+        (newLesson.startTime <= lesson.startTime && newLesson.endTime > lesson.startTime) ||
+        (newLesson.startTime < lesson.endTime && newLesson.endTime >= lesson.endTime) ||
+        (newLesson.startTime >= lesson.startTime && newLesson.endTime <= lesson.endTime)
+      )
+    );
+  });
+};
+
+const handleDrop = (e, targetDay, targetTime) => {
+  e.preventDefault();
+  
+  if (!draggedLesson) return;
+  
+  // Check if drop target is valid
+  const validSlots = alternativeSlots[draggedLesson.modCode] || [];
+  const isValidDrop = validSlots.some(slot => 
+    slot.day === targetDay && 
+    slot.startTime === targetTime
+  );
+  
+  if (isValidDrop) {
+    const newLesson = validSlots.find(slot => 
+      slot.day === targetDay && 
+      slot.startTime === targetTime
+    );
+    
+    setSelectedLessons(prev => ({
+      ...prev,
+      [draggedLesson.modCode]: newLesson
+    }));
+  }
+};
+
 function Timetable() {
 
   const [moduleInput, setModuleInput] = useState('');
@@ -52,6 +138,8 @@ function Timetable() {
   const [error, setError] = useState('');
   const [timetable, setTimetable] = useState(null);
   const [invalidModules, setInvalidModules] = useState([]);
+  const [selectedLessons, setSelectedLessons] = useState({}); 
+  const [alternativeSlots, setAlternativeSlots] = useState({});
   
   // Fetch NUSMods module list and cache it
   useEffect(() => {
@@ -167,13 +255,24 @@ function Timetable() {
       }
 
       const data = await resp.json();
+      console.log("Generated Timetable:" , data);
+      const initialSelections = {};
+      const alternatives = {};
+
+      Object.entries(data).forEach(([modCode, lessons]) => {
+        [initialSelections[modCode], ...alternatives[modCode]] = lessons;
+      });
+
+      setSelectedLessons(initialSelections);
+      setAlternativeSlots(alternatives);
       setTimetable(data);
+      
     } catch (e) {
       setError('Network error generating timetable');
     }
   };
 
-  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   const displayTimetableGrid = (timetable) => {
     const time = [];
@@ -193,47 +292,65 @@ function Timetable() {
         {/* Day rows */}
         {weekdays.map(day => (
           <React.Fragment key={`row-${day}`}>
-            {/* Row label (day) */}
-            <div className='timetable-cell timetable-header'>{day}</div>
-            {/* Empty cells for each hour */}
-            {time.map(hr => (
-              <div className='timetable-cell' key={`${day}-${hr}`}></div>
-            ))}
-          </React.Fragment>
+          <div className='timetable-cell timetable-header'>{day.substring(0, 3)}</div>
+          {time.map(hr => (
+            <div 
+              className='timetable-cell' 
+              key={`${day}-${hr}`}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => handleDrop(e, day, hr)}
+            ></div>
+          ))}
+        </React.Fragment>
         ))}
   
         {/* Lesson blocks */}
-        {timetable &&
-          Object.entries(timetable).flatMap(([modCode, lessons]) =>
-            lessons.map((lesson, idx) => {
-              const { day, startTime, endTime, venue } = lesson;
-              const startRow = timeToRow(startTime);
-              const endRow = timeToRow(endTime);
-              const dayIndex = weekdays.indexOf(day);
-  
-              if (dayIndex === -1) return null;
-  
-              return (
-                <div
-                  key={`${modCode}-${idx}`}
-                  className='timetable-cell timetable-lesson'
-                  style={{
-                    gridRow: `${startRow} / ${endRow}`,
-                    gridColumn: `${dayIndex + 2} / ${dayIndex + 3}`,
-                    backgroundColor: '#60a5fa',
-                    color: 'white',
-                    textAlign: 'center',
-                    padding: '5px',
-                    borderRadius: '5px',
-                  }}
-                >
-                  <strong>{modCode}</strong>
-                  <br />
-                  {venue}
-                </div>
-              );
-            })
-          )}
+        
+        {Object.entries(selectedLessons).map(([modCode, lesson]) => {
+          const startRow = timeToRow(lesson.startTime);
+          const endRow = timeToRow(lesson.endTime);
+          const dayIndex = weekdays.indexOf(lesson.day);
+
+          return (
+            <div
+              key={modCode}
+              className='timetable-lesson'
+              draggable
+              onDragStart={() => setDraggedLesson({ modCode, lesson })}
+              style={{
+                gridRow: `${startRow} / ${endRow}`,
+                gridColumn: `${dayIndex + 2}`,
+                backgroundColor: '#60a5fa',
+                color: 'white',
+                padding: '2px',
+                borderRadius: '4px',
+                cursor: 'grab',
+              }}
+            >
+              <strong>{modCode}</strong>
+              <div>{lesson.venue}</div>
+              {/* Slot switcher dropdown */}
+              <select
+                value={JSON.stringify(lesson)}
+                onChange={(e) => handleSlotChange(modCode, e.target.value)}
+                style={{
+                  width: '100%',
+                  fontSize: '10px',
+                  marginTop: '4px',
+                }}
+              >
+                {alternativeSlots[modCode]?.map((alt, i) => (
+                  <option 
+                    key={i} 
+                    value={JSON.stringify(alt)}
+                  >
+                    {alt.day} {alt.startTime}-{alt.endTime}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
       </div>
     );
   };
