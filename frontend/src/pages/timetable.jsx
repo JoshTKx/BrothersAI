@@ -5,12 +5,63 @@ import './Timetable.css';
 
 const baseURL = 'http://127.0.0.1:8000/';
 
+// Time string utilities
+const normalizeTimeString = (timeStr) => {
+  // Handle both "1200" and "12:00" formats
+  return timeStr.includes(":") ? timeStr : 
+         `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
+};
+
+const getHoursFromTime = (timeStr) => {
+  const normalized = normalizeTimeString(timeStr);
+  const [hours] = normalized.split(':').map(Number);
+  return hours;
+};
+
+const parseTime = (timeStr) => {
+  // Handle both "1200" and "12:00" formats
+  const normalized = timeStr.includes(":") ? timeStr : 
+                    `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
+  const [hours, minutes] = normalized.split(':').map(Number);
+  return { hours, minutes };
+};
+
+// Calculate grid position and duration
+const calculateGridPosition = (startTime, endTime, day, weekdays) => {
+  const start = parseTime(startTime);
+  const end = parseTime(endTime);
+  const dayIndex = weekdays.indexOf(day);
+  
+  // Grid starts at 8:00, columns are 1-based (first column is day labels)
+  const startColumn = (start.hours - 8) + 2; // +2 because first column is day labels
+  const duration = end.hours - start.hours;
+  const row = dayIndex + 2; // +2 because first row is time headers
+  
+  return { startColumn, duration, row };
+};
+
 const timeToRow = (timeStr) => {
   // Handle both "1200" and "12:00" formats
   const normalized = timeStr.includes(":") ? timeStr : 
                     `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
   const [hrs, mins] = normalized.split(':').map(Number);
-  return (hrs - 8) * 2 + (mins >= 30 ? 1 : 0) + 2; // +2 for header rows
+  // Account for the header row and convert to grid row
+  return hrs - 7; // Grid starts at 8am (row 2), so offset by 7
+};
+
+// Convert a time string to a column position
+const timeToColumn = (timeStr) => {
+  const normalized = timeStr.includes(":") ? timeStr : 
+                    `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
+  const [hrs] = normalized.split(':').map(Number);
+  return hrs - 7; // Grid starts at 8am (column 2), so offset by 7
+};
+
+// Calculate duration in grid cells
+const calculateDuration = (startTime, endTime) => {
+  const start = parseInt(startTime.split(':')[0]);
+  const end = parseInt(endTime.split(':')[0]);
+  return end - start;
 };
 
 const getSemLabel = (sem) => {
@@ -140,7 +191,8 @@ function Timetable() {
   const [invalidModules, setInvalidModules] = useState([]);
   const [selectedLessons, setSelectedLessons] = useState({}); 
   const [alternativeSlots, setAlternativeSlots] = useState({});
-  
+  const [draggedLesson, setDraggedLesson] = useState(null);
+
   // Fetch NUSMods module list and cache it
   useEffect(() => {
     const fetchModuleData = async() => {
@@ -210,6 +262,10 @@ function Timetable() {
       setError(`Module ${modCode} is already added`);
       return;
     }
+    if (modules.includes(modCode)){
+      setError(`Module ${modCode} is already added`);
+      return;
+    }
     if (!(await isModuleOfferedInSem(modCode, semester))) {
       setError(`Module ${modCode} is not offered in ${getSemLabel(semester)}`);
       return;
@@ -235,7 +291,7 @@ function Timetable() {
       return;
     }
     if (invalidModules.length > 0){
-      setError(`Please remove modules not offered in Semester ${semester}: ${invalidModules.join(', ')}`);
+      setError(`Please remove modules not offered in ${getSemLabel(semester)}: ${invalidModules.join(', ')}`);
       return;
     }
 
@@ -259,8 +315,39 @@ function Timetable() {
       const initialSelections = {};
       const alternatives = {};
 
+      // Group lessons by module and type
       Object.entries(data).forEach(([modCode, lessons]) => {
-        [initialSelections[modCode], ...alternatives[modCode]] = lessons;
+        // First, group by lesson type
+        const lessonsByType = {};
+        lessons.forEach(lesson => {
+          const type = lesson.lessonType;
+          if (!lessonsByType[type]) {
+            lessonsByType[type] = [];
+          }
+          lessonsByType[type].push(lesson);
+        });
+
+        // For each lesson type, group by class number
+        Object.entries(lessonsByType).forEach(([type, typeLessons]) => {
+          // Group lessons by class number
+          const byClassNo = {};
+          typeLessons.forEach(lesson => {
+            if (!byClassNo[lesson.classNo]) {
+              byClassNo[lesson.classNo] = [];
+            }
+            byClassNo[lesson.classNo].push(lesson);
+          });
+
+          // Take the first class number's lessons as initial selection
+          const firstClassNo = Object.keys(byClassNo)[0];
+          const lessonKey = `${modCode}-${type}`;
+          initialSelections[lessonKey] = byClassNo[firstClassNo];
+
+          // Store other class numbers as alternatives
+          alternatives[lessonKey] = Object.entries(byClassNo)
+            .filter(([classNo]) => classNo !== firstClassNo)
+            .map(([_, lessons]) => lessons);
+        });
       });
 
       setSelectedLessons(initialSelections);
@@ -272,116 +359,241 @@ function Timetable() {
     }
   };
 
+  const handleSlotChange = (lessonKey, selectedValue) => {
+    const newLessons = JSON.parse(selectedValue);
+    
+    // Check if any of the new lessons clash with existing lessons
+    const hasClash = Object.entries(selectedLessons).some(([key, lessons]) => {
+      if (key === lessonKey) return false;
+      
+      // Convert lessons to array if it's not already
+      const existingLessons = Array.isArray(lessons) ? lessons : [lessons];
+      
+      return existingLessons.some(existing => 
+        newLessons.some(newLesson =>
+          existing.day === newLesson.day &&
+          (
+            (newLesson.startTime <= existing.startTime && newLesson.endTime > existing.startTime) ||
+            (newLesson.startTime < existing.endTime && newLesson.endTime >= existing.endTime) ||
+            (newLesson.startTime >= existing.startTime && newLesson.endTime <= existing.endTime)
+          )
+        )
+      );
+    });
+
+    if (hasClash) {
+      alert("This slot clashes with another lesson!");
+      return;
+    }
+
+    setSelectedLessons(prev => ({
+      ...prev,
+      [lessonKey]: newLessons
+    }));
+  };
+
   const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-  const displayTimetableGrid = (timetable) => {
-    const time = [];
-    for (let i = 8; i < 21; i++) {
-      time.push(`${i.toString().padStart(2, '0')}:00`);
-    }
-  
-    return (
-      <div className='timetable-grid'>
-        {/* Header row: empty top-left, then time */}
-        <div className='timetable-cell timetable-header'></div>
-        {time.map(hr => (
-          <div className='timetable-cell timetable-header' key={`header-${hr}`}>
-            {hr}
-          </div>
-        ))}
-        {/* Day rows */}
-        {weekdays.map(day => (
-          <React.Fragment key={`row-${day}`}>
-          <div className='timetable-cell timetable-header'>{day.substring(0, 3)}</div>
-          {time.map(hr => (
-            <div 
-              className='timetable-cell' 
-              key={`${day}-${hr}`}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => handleDrop(e, day, hr)}
-            ></div>
-          ))}
-        </React.Fragment>
-        ))}
-  
-        {/* Lesson blocks */}
-        
-        {Object.entries(selectedLessons).map(([modCode, lesson]) => {
-          const startRow = timeToRow(lesson.startTime);
-          const endRow = timeToRow(lesson.endTime);
-          const dayIndex = weekdays.indexOf(lesson.day);
+  // Create a map to store module colors
+  const [moduleColors] = useState(() => {
+    // Array of distinct colors
+    const colors = [
+      '#60a5fa',  // Blue
+      '#34d399',  // Green
+      '#f472b6',  // Pink
+      '#a78bfa',  // Purple
+      '#fbbf24',  // Yellow
+      '#fb923c',  // Orange
+      '#4ade80',  // Light Green
+      '#f87171',  // Red
+      '#38bdf8',  // Sky Blue
+      '#818cf8'   // Indigo
+    ];
+    return new Map();
+  });
 
-          return (
-            <div
-              key={modCode}
-              className='timetable-lesson'
-              draggable
-              onDragStart={() => setDraggedLesson({ modCode, lesson })}
+  // Helper function to get or assign color for a module
+  const getColorForModule = (modCode) => {
+    if (!moduleColors.has(modCode)) {
+      // Assign a new color from the array using the current map size as index
+      const colorIndex = moduleColors.size % 10;
+      const colors = [
+        '#60a5fa',  // Blue
+        '#34d399',  // Green
+        '#f472b6',  // Pink
+        '#a78bfa',  // Purple
+        '#fbbf24',  // Yellow
+        '#fb923c',  // Orange
+        '#4ade80',  // Light Green
+        '#f87171',  // Red
+        '#38bdf8',  // Sky Blue
+        '#818cf8'   // Indigo
+      ];
+      moduleColors.set(modCode, colors[colorIndex]);
+    }
+    return moduleColors.get(modCode);
+  };
+
+  const displayTimetableGrid = (timetable) => {
+    const timeSlots = [];
+    // Generate time slots from 8:00 to 20:00
+    for (let i = 8; i <= 20; i++) {
+      timeSlots.push(`${i.toString().padStart(2, '0')}:00`);
+    }
+    
+    return (
+      <div className='timetable-wrapper'>
+        <div className='timetable-grid'>
+          {/* Empty corner cell */}
+          <div className='timetable-cell timetable-header corner-header'></div>
+          
+          {/* Time headers */}
+          {timeSlots.map((time, index) => (
+            <div 
+              key={`time-${time}`} 
+              className='timetable-cell timetable-header'
               style={{
-                gridRow: `${startRow} / ${endRow}`,
-                gridColumn: `${dayIndex + 2}`,
-                backgroundColor: '#60a5fa',
-                color: 'white',
-                padding: '2px',
-                borderRadius: '4px',
-                cursor: 'grab',
+                gridColumn: index + 2
               }}
             >
-              <strong>{modCode}</strong>
-              <div>{lesson.venue}</div>
-              {/* Slot switcher dropdown */}
-              <select
-                value={JSON.stringify(lesson)}
-                onChange={(e) => handleSlotChange(modCode, e.target.value)}
+              {time}
+            </div>
+          ))}
+          
+          {/* Days and time slots */}
+          {weekdays.map((day, dayIndex) => (
+            <React.Fragment key={day}>
+              {/* Day header */}
+              <div 
+                className='timetable-cell day-header'
                 style={{
-                  width: '100%',
-                  fontSize: '10px',
-                  marginTop: '4px',
+                  gridRow: dayIndex + 2
                 }}
               >
-                {alternativeSlots[modCode]?.map((alt, i) => (
-                  <option 
-                    key={i} 
-                    value={JSON.stringify(alt)}
-                  >
-                    {alt.day} {alt.startTime}-{alt.endTime}
-                  </option>
-                ))}
-              </select>
-            </div>
-          );
-        })}
+                {day}
+              </div>
+              
+              {/* Time slots */}
+              {timeSlots.map((time, timeIndex) => (
+                <div 
+                  key={`${day}-${time}`}
+                  className='timetable-cell'
+                  style={{
+                    gridColumn: timeIndex + 2,
+                    gridRow: dayIndex + 2
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => handleDrop(e, day, time)}
+                />
+              ))}
+            </React.Fragment>
+          ))}
+
+          {/* Lesson blocks */}
+          {Object.entries(selectedLessons).map(([lessonKey, lessons]) => {
+            const [modCode, type] = lessonKey.split('-');
+            const lessonArray = Array.isArray(lessons) ? lessons : [lessons];
+
+            return lessonArray.map((lesson, index) => {
+              const { startColumn, duration, row } = calculateGridPosition(
+                lesson.startTime,
+                lesson.endTime,
+                lesson.day,
+                weekdays
+              );
+
+              return (
+                <div
+                  key={`${lessonKey}-${index}`}
+                  className='timetable-lesson'
+                  style={{
+                    gridColumn: `${startColumn} / span ${duration}`,
+                    gridRow: row,
+                    backgroundColor: getColorForModule(modCode)
+                  }}
+                  draggable
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    setDraggedLesson({ modCode, type, lessons: lessonArray });
+                  }}
+                >
+                  <div className="lesson-content">
+                    <strong>{modCode}</strong>
+                    <div>{type}</div>
+                    <div>Group {lesson.classNo}</div>
+                    <div>{lesson.venue}</div>
+                    <div>{lesson.startTime}-{lesson.endTime}</div>
+                    
+                    {index === 0 && alternativeSlots[lessonKey]?.length > 0 && (
+                      <select
+                        onClick={(e) => e.stopPropagation()}
+                        value={JSON.stringify(lessonArray)}
+                        onChange={(e) => handleSlotChange(lessonKey, e.target.value)}
+                      >
+                        <option value={JSON.stringify(lessonArray)}>
+                          Group {lesson.classNo}
+                        </option>
+                        {alternativeSlots[lessonKey]?.map((altLessons, i) => 
+                          altLessons?.length > 0 ? (
+                            <option key={i} value={JSON.stringify(altLessons)}>
+                              Group {altLessons[0].classNo}
+                            </option>
+                          ) : null
+                        )}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              );
+            });
+          })}
+        </div>
       </div>
     );
   };
 
   return (
     <div className='App'>
-      <h1>Timetable</h1>
-      <div className='controls'>
-        <SemesterSelect semester={semester} onChange={(e) => setSemester(e.target.value)}/>
+      <div className='controls-container'>
+        <h1 style={{ margin: '0 0 1rem 0' }}>Timetable</h1>
+        
+        <div className='controls'>
+          <SemesterSelect semester={semester} onChange={(e) => setSemester(e.target.value)}/>
 
-        <div>
-          <input
-            type='text'
-            value={moduleInput}
-            onChange={(e) => setModuleInput(e.target.value)}
-            placeholder="Enter module code (e.g., CS1101S)"
-          />
-          <button onClick={addModule}>Add Module</button>
+          <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <input
+              type='text'
+              value={moduleInput}
+              onChange={(e) => setModuleInput(e.target.value)}
+              placeholder="Enter module code (e.g., CS1101S)"
+              style={{ flex: 1 }}
+            />
+            <button onClick={addModule}>Add Module</button>
+          </div>
         </div>
+
+        <ErrorDisplay error={error}/>
+
+        {modules.length > 0 && (
+          <>
+            <ModuleList 
+              modules={modules} 
+              invalidModules={invalidModules} 
+              onRemove={removeModule} 
+            />
+            <button 
+              onClick={generateTimetable}
+              style={{ marginTop: '0.5rem' }}
+            >
+              Generate Timetable
+            </button>
+          </>
+        )}
       </div>
 
-      <ErrorDisplay error={error}/>
-
-      <ModuleList modules={modules} invalidModules={invalidModules} onRemove={removeModule} />
-
-      <button onClick={generateTimetable}>Generate Timetable</button>
-
       {timetable && (
-        <div className="timetable-container" style={{flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'auto'}}>
-          <h2>Timetable</h2>
-          <div className="timetable-wrapper" style={{position: 'relative', marginTop: '2rem', flexGrow: 1 }}>
+        <div className="timetable-container">
+          <div className="timetable-wrapper">
             {displayTimetableGrid(timetable)}
           </div>
         </div>

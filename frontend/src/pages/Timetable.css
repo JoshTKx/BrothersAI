@@ -1,140 +1,252 @@
+/* Reset root elements */
 html, body, #root {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    width: 100%;
-    font-family: sans-serif;
-    box-sizing: border-box;
-  }
-  
-  .App {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: 16px;
-    box-sizing: border-box;
-  
-    
-    margin: 40px auto;
-    border-radius: 10px;
-    background-color: #f5f7fa;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    font-family: Arial, sans-serif;
-  }
-  
-  h1 {
-    color: #333;
-    text-align: center;
-  }
-  
-  label {
-    font-weight: bold;
-    margin-right: 10px;
-  }
-  
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  .controls input, .controls select, .controls button {
-    flex: 1;
-    min-width: 180px;
-  }
-  
-  select,
-  input {
-    padding: 8px;
-    margin: 5px 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    width: calc(100% - 20px);
-  }
-  
-  button {
-    margin-top: 10px;
-    padding: 10px 15px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  button:hover {
-    background-color: #0056b3;
-  }
-  
-  ul {
-    padding-left: 20px;
-  }
-  
-  li {
-    margin: 5px 0;
-  }
-  
-  p {
-    color: red;
-  }
-  
-  pre {
-    background-color: #eef;
-    padding: 10px;
-    border-radius: 5px;
-    overflow-x: auto;
-  }
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+}
 
+.App {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f5f7fa;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+
+/* Header elements */
+h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+h2 {
+  margin: 0 0 1rem 0;
+  flex-shrink: 0;
+}
+
+label {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+/* Controls container */
+.controls-container {
+  flex: 0 0 auto;
+  padding: 1rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.controls {
+  width: 95%;
+  max-width: 1680px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 0.5rem;
+  justify-content: center;
+}
+
+.controls input, .controls select, .controls button {
+  flex: 1;
+  min-width: 180px;
+}
+
+select,
+input {
+  padding: 8px;
+  margin: 5px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: calc(100% - 20px);
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+ul {
+  margin: 0.5rem 0;
+  padding-left: 20px;
+  flex-shrink: 0;
+}
+
+li {
+  margin: 5px 0;
+}
+
+p {
+  color: red;
+}
+
+pre {
+  background-color: #eef;
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+/* Timetable section */
+.timetable-container {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.timetable-wrapper {
+  width: 95%;
+  max-width: 1680px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.timetable-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(96px, auto) repeat(13, minmax(72px, 1fr));
+  grid-template-rows: 53px repeat(5, minmax(79px, auto));
+  gap: 1px;
+  background: #e5e7eb;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.timetable-cell {
+  background: white;
+  border: 1px solid #ddd;
+  padding: 0.3rem 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow: hidden;
+  text-align: center;
+  font-size: clamp(0.84rem, 1.8vw, 1.2rem);
+}
+
+.timetable-cell.timetable-header {
+  background: #f0f0f0;
+  font-weight: bold;
+  height: 53px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  border-bottom: 2px solid #ccc;
+}
+
+.timetable-cell.day-header {
+  background: #f0f0f0;
+  font-weight: bold;
+  justify-content: flex-end;
+  padding-right: 0.75rem;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  border-right: 2px solid #ccc;
+}
+
+.timetable-lesson {
+  background: #60a5fa;
+  color: white;
+  padding: 0.25rem;
+  border-radius: 4px;
+  margin: 2px;
+  height: calc(100% - 4px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.lesson-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: clamp(0.84rem, 1.44vw, 1.02rem);
+}
+
+.lesson-content strong {
+  font-size: clamp(0.9rem, 1.56vw, 1.14rem);
+}
+
+.lesson-content select {
+  margin-top: 3px;
+  background: white;
+  border: none;
+  border-radius: 2px;
+  padding: 1px;
+  font-size: clamp(0.78rem, 1.32vw, 0.96rem);
+}
+
+/* Media Queries for responsive design */
+@media screen and (max-width: 1200px) {
+  .timetable-wrapper {
+    width: 98%;
+  }
+  
   .timetable-grid {
-    display: grid;
-    grid-template-columns: 80px repeat(13, 1fr); /* 80px for day column, 13 hourly columns */
-    grid-template-rows: auto repeat(5, 1fr);
-    gap: 1px;
-    background: #e5e7eb;
+    grid-template-columns: minmax(90px, auto) repeat(13, minmax(66px, 1fr));
+  }
+}
+
+@media screen and (max-width: 800px) {
+  .timetable-grid {
+    grid-template-columns: minmax(84px, auto) repeat(13, minmax(60px, 1fr));
+    grid-template-rows: 46px repeat(5, minmax(66px, auto));
+  }
+  
+  .timetable-cell.timetable-header {
+    height: 46px;
+  }
+  
+  .lesson-content {
+    font-size: clamp(0.78rem, 1.2vw, 0.96rem);
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .timetable-wrapper {
     width: 100%;
-    max-width: 100%;
-    border: 1px solid #ccc;
-    position: relative;
+  }
+  
+  .timetable-grid {
+    grid-template-columns: minmax(72px, auto) repeat(13, minmax(54px, 1fr));
+    grid-template-rows: 40px repeat(5, minmax(59px, auto));
   }
   
   .timetable-cell {
-    border: 1px solid #ddd;
-    padding: 4px;
-    box-sizing: border-box;
+    padding: 0.18rem 0.3rem;
+    font-size: clamp(0.78rem, 1.44vw, 0.96rem);
   }
-  
-  .timetable-header {
-    background: #f0f0f0;
-    font-weight: bold;
-    text-align: center;
-    padding: 8px;
-    position: sticky;
-    top: 0;
-    z-index: 20;
-  }
-  
-  .lesson-block {
-    background: #60a5fa;
-    color: white;
-    padding: 8px;
-    border-radius: 4px;
-    margin: 2px;
-    cursor: grab;
-  }
-
-  .lesson-block select {
-  margin-top: 5px;
-  width: 100%;
-  background: white;
-  color: black;
-  }
-  
-  .timetable-lesson{
-    z-index: 10;
-    display: grid;
-    grid-template-columns: repeat(13, 1fr);
-    gap: 2px;
-  }
-  
-  
-  
+}
