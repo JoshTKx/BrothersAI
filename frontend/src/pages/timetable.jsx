@@ -83,45 +83,80 @@ const SemesterSelect = ({semester, onChange}) => (
 );
 
 const ModuleList = ({modules, invalidModules, onRemove}) => (
-  <ul>
+  <ul className="module-list">
     {modules.map((mod,i) => (
-      <li key={i} style={{color: invalidModules.includes(mod) ? 'red' : 'black'}}>
+      <li key={i} className={`module-list-item ${invalidModules.includes(mod) ? 'invalid' : ''}`}>
         {mod} {invalidModules.includes(mod) && '(Not offered this semester)'}
-        <button onClick={() => onRemove(mod)} style={{marginLeft: '10px'}}>X</button>
+        <button onClick={() => onRemove(mod)}>X</button>
       </li>
     ))}
   </ul>
 );
 
 const ErrorDisplay = ({error}) => (
-  error ? <p style={{color: 'red'}}>{error}</p> : null
+  error ? <p className="error-message">{error}</p> : null
 );
 
-const LessonBlock = ({ modCode, lesson, onDragStart }) => {
+const LessonBlock = ({ 
+  modCode, 
+  lesson,
+  isDragging,
+  draggedLesson,
+  alternativeSlots,
+  onDragStart: handleDragStart,
+  onDragEnd: handleDragEnd,
+  onSlotChange: handleSlotChange,
+  getColorForModule,
+  weekdays
+}) => {
+  const onDragStart = (e) => {
+    // Prevent drag start if the click was on the select element
+    if (e.target.tagName.toLowerCase() === 'select') {
+      e.preventDefault();
+      return;
+    }
+
+    // Set data transfer properties for better drag feedback
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', modCode);
+
+    // Start the drag operation
+    handleDragStart(modCode, lesson);
+  };
+
   return (
     <div 
-      className="lesson-block" 
-      draggable
+      className={`timetable-lesson ${isDragging && draggedLesson?.modCode === modCode ? 'dragging' : ''}`}
+      draggable="true"
       onDragStart={onDragStart}
+      onDragEnd={handleDragEnd}
+      style={{
+        gridColumn: `${timeToColumn(lesson.startTime)} / span ${calculateDuration(lesson.startTime, lesson.endTime)}`,
+        gridRow: weekdays.indexOf(lesson.day) + 2,
+        backgroundColor: getColorForModule(modCode)
+      }}
     >
-      <div>{modCode}</div>
-      <div>{lesson.venue}</div>
-      <div>{lesson.startTime}-{lesson.endTime}</div>
-      
-      {/* Dropdown to switch slots */}
-      <select 
-        onChange={(e) => handleSlotChange(modCode, e.target.value)}
-        value={JSON.stringify(lesson)}
-      >
-        {alternativeSlots[modCode]?.map((alt, i) => (
-          <option 
-            key={i} 
-            value={JSON.stringify(alt)}
-          >
-            {alt.day} {alt.startTime}-{alt.endTime} ({alt.venue})
-          </option>
-        ))}
-      </select>
+      <div className="lesson-content">
+        <strong>{modCode}</strong>
+        <div>{lesson.venue}</div>
+        <div>{lesson.startTime}-{lesson.endTime}</div>
+        
+        {/* Dropdown to switch slots */}
+        <select 
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => handleSlotChange(modCode, e.target.value)}
+          value={JSON.stringify(lesson)}
+        >
+          {alternativeSlots[modCode]?.map((alt, i) => (
+            <option 
+              key={i} 
+              value={JSON.stringify(alt)}
+            >
+              {alt.day} {alt.startTime}-{alt.endTime} ({alt.venue})
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 };
@@ -155,31 +190,6 @@ const hasClashes = (currentLessons, modifiedModCode, newLesson) => {
   });
 };
 
-const handleDrop = (e, targetDay, targetTime) => {
-  e.preventDefault();
-  
-  if (!draggedLesson) return;
-  
-  // Check if drop target is valid
-  const validSlots = alternativeSlots[draggedLesson.modCode] || [];
-  const isValidDrop = validSlots.some(slot => 
-    slot.day === targetDay && 
-    slot.startTime === targetTime
-  );
-  
-  if (isValidDrop) {
-    const newLesson = validSlots.find(slot => 
-      slot.day === targetDay && 
-      slot.startTime === targetTime
-    );
-    
-    setSelectedLessons(prev => ({
-      ...prev,
-      [draggedLesson.modCode]: newLesson
-    }));
-  }
-};
-
 function Timetable() {
 
   const [moduleInput, setModuleInput] = useState('');
@@ -192,6 +202,8 @@ function Timetable() {
   const [selectedLessons, setSelectedLessons] = useState({}); 
   const [alternativeSlots, setAlternativeSlots] = useState({});
   const [draggedLesson, setDraggedLesson] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [possibleSlots, setPossibleSlots] = useState([]);
 
   // Fetch NUSMods module list and cache it
   useEffect(() => {
@@ -452,9 +464,7 @@ function Timetable() {
             <div 
               key={`time-${time}`} 
               className='timetable-cell timetable-header'
-              style={{
-                gridColumn: index + 2
-              }}
+              style={{ gridColumn: index + 2 }}
             >
               {time}
             </div>
@@ -466,9 +476,7 @@ function Timetable() {
               {/* Day header */}
               <div 
                 className='timetable-cell day-header'
-                style={{
-                  gridRow: dayIndex + 2
-                }}
+                style={{ gridRow: dayIndex + 2 }}
               >
                 {day}
               </div>
@@ -477,12 +485,18 @@ function Timetable() {
               {timeSlots.map((time, timeIndex) => (
                 <div 
                   key={`${day}-${time}`}
-                  className='timetable-cell'
+                  className={`timetable-cell ${
+                    isDragging && possibleSlots.includes(`${day}-${time}`) ? 'possible-slot' : ''
+                  }`}
                   style={{
                     gridColumn: timeIndex + 2,
-                    gridRow: dayIndex + 2
+                    gridRow: dayIndex + 2,
+                    position: 'relative'
                   }}
-                  onDragOver={(e) => e.preventDefault()}
+                  data-day={day}
+                  data-time={time}
+                  onDragOver={(e) => handleDragOver(e, day, time)}
+                  onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, day, time)}
                 />
               ))}
@@ -502,26 +516,41 @@ function Timetable() {
                 weekdays
               );
 
+              const onLessonDragStart = (e) => {
+                // Prevent drag start if the click was on the select element
+                if (e.target.tagName.toLowerCase() === 'select') {
+                  e.preventDefault();
+                  return;
+                }
+
+                // Set data transfer properties for better drag feedback
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', modCode);
+
+                // Start the drag operation
+                handleDragStart(modCode, lesson);
+              };
+
               return (
                 <div
                   key={`${lessonKey}-${index}`}
                   className='timetable-lesson'
                   style={{
-                    gridColumn: `${startColumn} / span ${duration}`,
-                    gridRow: row,
-                    backgroundColor: getColorForModule(modCode)
+                    '--lesson-column': `${startColumn} / span ${duration}`,
+                    '--lesson-row': row,
+                    '--lesson-color': getColorForModule(modCode)
                   }}
-                  draggable
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    setDraggedLesson({ modCode, type, lessons: lessonArray });
-                  }}
+                  draggable="true"
+                  onDragStart={onLessonDragStart}
+                  onDragEnd={handleDragEnd}
                 >
                   <div className="lesson-content">
                     <strong>{modCode}</strong>
                     <div>{type}</div>
-                    <div>Group {lesson.classNo}</div>
-                    <div>{lesson.venue}</div>
+                    <div>
+                      <span>Group {lesson.classNo}</span>
+                      <span> • {lesson.venue}</span>
+                    </div>
                     <div>{lesson.startTime}-{lesson.endTime}</div>
                     
                     {index === 0 && alternativeSlots[lessonKey]?.length > 0 && (
@@ -529,6 +558,7 @@ function Timetable() {
                         onClick={(e) => e.stopPropagation()}
                         value={JSON.stringify(lessonArray)}
                         onChange={(e) => handleSlotChange(lessonKey, e.target.value)}
+                        title="Change group"
                       >
                         <option value={JSON.stringify(lessonArray)}>
                           Group {lesson.classNo}
@@ -552,54 +582,174 @@ function Timetable() {
     );
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (modCode, lesson) => {
+    if (typeof modCode !== 'string' || !lesson) return;
+    
+    setDraggedLesson({ modCode, lesson });
+    setIsDragging(true);
+
+    // Calculate and show all possible slots immediately when dragging starts
+    const possibleTimes = calculatePossibleSlots(modCode, lesson);
+    setPossibleSlots(possibleTimes);
+    
+    // Add dragging class to the lesson being dragged
+    document.querySelectorAll(`.timetable-lesson`).forEach(el => {
+      if (el.querySelector(`strong`)?.textContent === modCode) {
+        el.classList.add('dragging');
+      }
+    });
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedLesson(null);
+    setPossibleSlots([]);
+    
+    // Remove visual feedback classes
+    document.querySelectorAll('.timetable-cell').forEach(el => {
+      el.classList.remove('droppable', 'invalid-drop');
+    });
+    document.querySelectorAll('.timetable-lesson').forEach(el => {
+      el.classList.remove('dragging');
+    });
+  };
+
+  const isPossibleSlot = (slot) => {
+    return possibleSlots && possibleSlots.includes(slot);
+  };
+
+  const handleDragOver = (e, day, time) => {
+    if (!e || !e.currentTarget || !e.currentTarget.classList) return;
+    e.preventDefault();
+    if (!draggedLesson) return;
+    const slot = `${day}-${time}`;
+    const isValid = isPossibleSlot(slot);
+    e.currentTarget.classList.remove('possible-slot');
+    e.currentTarget.classList.toggle('droppable', isValid);
+    e.currentTarget.classList.toggle('invalid-drop', !isValid);
+  };
+
+  const handleDragLeave = (e) => {
+    if (!e || !e.currentTarget || !e.currentTarget.classList) return;
+    e.preventDefault();
+    const day = e.currentTarget.getAttribute('data-day');
+    const time = e.currentTarget.getAttribute('data-time');
+    if (!day || !time) return;
+    const slot = `${day}-${time}`;
+    e.currentTarget.classList.remove('droppable', 'invalid-drop');
+    if (possibleSlots.includes(slot)) {
+      e.currentTarget.classList.add('possible-slot');
+    }
+  };
+
+  const handleDrop = (e, day, time) => {
+    if (!e || !e.currentTarget || !e.currentTarget.classList) return;
+    e.preventDefault();
+    e.currentTarget.classList.remove('droppable', 'invalid-drop');
+    if (!draggedLesson) return;
+    const slot = `${day}-${time}`;
+    if (!isPossibleSlot(slot)) {
+      e.currentTarget.classList.add('invalid-drop');
+      setTimeout(() => {
+        if (e.currentTarget && e.currentTarget.classList) {
+          e.currentTarget.classList.remove('invalid-drop');
+        }
+      }, 500);
+      return;
+    }
+    
+    const { modCode, lesson } = draggedLesson;
+    const [baseModCode, lessonType] = modCode.split('-');
+    const currentClassNo = lesson.classNo;
+
+    // Find the specific alternative slot that matches the drop position
+    let matchingSlot = null;
+    Object.entries(alternativeSlots).forEach(([key, alternatives]) => {
+      const [altModCode, altType] = key.split('-');
+      if (altModCode === baseModCode && altType === lessonType) {
+        alternatives.forEach(altGroup => {
+          if (altGroup[0]?.classNo === currentClassNo) {
+            const match = altGroup.find(alt => 
+              alt.day === day && alt.startTime === time
+            );
+            if (match) {
+              matchingSlot = match;
+            }
+          }
+        });
+      }
+    });
+
+    if (matchingSlot) {
+      // Update the lesson to the new slot
+      const newLesson = {
+        ...lesson,
+        day: matchingSlot.day,
+        startTime: matchingSlot.startTime,
+        endTime: matchingSlot.endTime,
+        venue: matchingSlot.venue
+      };
+
+      setSelectedLessons(prev => ({
+        ...prev,
+        [modCode]: newLesson
+      }));
+    }
+
+    // Reset dragged lesson and possible slots
+    setDraggedLesson(null);
+    setPossibleSlots([]);
+  };
+
+  const calculatePossibleSlots = (modCode, lesson) => {
+    const possible = [];
+    const { startTime, endTime, day } = lesson;
+    const startHour = getHoursFromTime(startTime);
+    const endHour = getHoursFromTime(endTime);
+    const dayIndex = new Date(`1970-01-01T00:00:00Z`).getUTCDay() - 1; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+    // Check each hour in the lesson's duration
+    for (let hour = startHour; hour < endHour; hour++) {
+      const timeSlot = `${hour.toString().padStart(2, '0')}:00`;
+      possible.push(`${day}-${timeSlot}`);
+    }
+    
+    return possible;
+  };
+
   return (
-    <div className='App'>
-      <div className='controls-container'>
-        <h1 style={{ margin: '0 0 1rem 0' }}>Timetable</h1>
-        
-        <div className='controls'>
-          <SemesterSelect semester={semester} onChange={(e) => setSemester(e.target.value)}/>
-
-          <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
-            <input
-              type='text'
-              value={moduleInput}
-              onChange={(e) => setModuleInput(e.target.value)}
-              placeholder="Enter module code (e.g., CS1101S)"
-              style={{ flex: 1 }}
-            />
-            <button onClick={addModule}>Add Module</button>
-          </div>
-        </div>
-
-        <ErrorDisplay error={error}/>
-
-        {modules.length > 0 && (
-          <>
-            <ModuleList 
-              modules={modules} 
-              invalidModules={invalidModules} 
-              onRemove={removeModule} 
-            />
-            <button 
-              onClick={generateTimetable}
-              style={{ marginTop: '0.5rem' }}
-            >
-              Generate Timetable
-            </button>
-          </>
-        )}
+    <div className="timetable-container">
+      <h1>NUS Modular System Timetable Planner</h1>
+      
+      <div className="module-input">
+        <input 
+          type="text" 
+          value={moduleInput} 
+          onChange={(e) => setModuleInput(e.target.value)}
+          placeholder="Enter module code"
+        />
+        <button onClick={addModule}>Add Module</button>
       </div>
-
-      {timetable && (
-        <div className="timetable-container">
-          <div className="timetable-wrapper">
-            {displayTimetableGrid(timetable)}
-          </div>
-        </div>
-      )}
+      
+      <SemesterSelect 
+        semester={semester} 
+        onChange={(e) => setSemester(e.target.value)}
+      />
+      
+      <ErrorDisplay error={error} />
+      
+      <ModuleList 
+        modules={modules} 
+        invalidModules={invalidModules}
+        onRemove={removeModule}
+      />
+      
+      <button onClick={generateTimetable}>Generate Timetable</button>
+      
+      {timetable && displayTimetableGrid(timetable)}
     </div>
   );
 }
 
-export default Timetable
+export default Timetable;

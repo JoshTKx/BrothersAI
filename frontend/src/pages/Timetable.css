@@ -17,9 +17,9 @@ html, body, #root {
   padding: 0;
 }
 
-/* Header elements */
+/* Header and Text Styles */
 h1 {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 1rem 0;
   font-size: 1.5rem;
   flex-shrink: 0;
 }
@@ -29,12 +29,29 @@ h2 {
   flex-shrink: 0;
 }
 
-label {
-  font-weight: bold;
-  margin-right: 10px;
+/* Module List Styles */
+.module-list {
+  list-style: none;
+  padding-left: 20px;
+  margin: 0.5rem 0;
+  flex-shrink: 0;
 }
 
-/* Controls container */
+.module-list-item {
+  margin: 5px 0;
+  display: flex;
+  align-items: center;
+}
+
+.module-list-item.invalid {
+  color: red;
+}
+
+.module-list-item button {
+  margin-left: 10px;
+}
+
+/* Controls Section */
 .controls-container {
   flex: 0 0 auto;
   padding: 1rem;
@@ -58,108 +75,79 @@ label {
   justify-content: center;
 }
 
-.controls input, .controls select, .controls button {
+.input-container {
+  display: flex;
+  gap: 8px;
   flex: 1;
-  min-width: 180px;
 }
 
-select,
-input {
+.module-input {
+  flex: 1;
   padding: 8px;
   margin: 5px 0;
   border: 1px solid #ccc;
   border-radius: 4px;
-  width: calc(100% - 20px);
 }
 
-button {
-  margin-top: 10px;
-  padding: 10px 15px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-ul {
-  margin: 0.5rem 0;
-  padding-left: 20px;
-  flex-shrink: 0;
-}
-
-li {
-  margin: 5px 0;
-}
-
-p {
+/* Error Display */
+.error-message {
   color: red;
 }
 
-pre {
-  background-color: #eef;
-  padding: 10px;
-  border-radius: 5px;
-  overflow-x: auto;
+/* Generate Button */
+.generate-button {
+  margin-top: 0.5rem;
 }
 
-/* Timetable section */
+/* Timetable Layout */
 .timetable-container {
   flex: 1;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   background: white;
-  padding: 1rem;
+  padding: 0.5rem;
   box-sizing: border-box;
+  overflow-x: auto;
 }
 
 .timetable-wrapper {
   width: 95%;
   max-width: 1680px;
+  min-width: min-content;
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  display: flex;
-  justify-content: center;
   margin: 0 auto;
+  position: relative;
+  overflow: visible;
 }
 
 .timetable-grid {
   display: grid;
   width: 100%;
   grid-template-columns: minmax(96px, auto) repeat(13, minmax(72px, 1fr));
-  grid-template-rows: 53px repeat(5, minmax(79px, auto));
+  grid-template-rows: 48px repeat(5, minmax(72px, auto));
   gap: 1px;
   background: #e5e7eb;
   border: 1px solid #ccc;
   border-radius: 8px;
+  isolation: isolate;
 }
 
 .timetable-cell {
+  position: relative;
   background: white;
-  border: 1px solid #ddd;
-  padding: 0.3rem 0.6rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  word-wrap: break-word;
-  overflow: hidden;
-  text-align: center;
-  font-size: clamp(0.84rem, 1.8vw, 1.2rem);
+  transition: all 0.15s ease-in-out;
+  height: 100%;
 }
 
 .timetable-cell.timetable-header {
   background: #f0f0f0;
   font-weight: bold;
-  height: 53px;
+  height: 48px;
   position: sticky;
   top: 0;
   z-index: 3;
@@ -178,38 +166,117 @@ pre {
 }
 
 .timetable-lesson {
-  background: #60a5fa;
+  background: var(--lesson-color, #60a5fa);
   color: white;
   padding: 0.25rem;
   border-radius: 4px;
-  margin: 2px;
-  height: calc(100% - 4px);
+  cursor: grab;
+  user-select: none;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  transition: all 0.15s ease-in-out;
+  margin: 2px;
+  height: calc(100% - 4px);
+  grid-column: var(--lesson-column);
+  grid-row: var(--lesson-row);
+  position: relative;
+  z-index: 1;
+}
+
+.timetable-lesson:active {
+  cursor: grabbing;
+}
+
+.timetable-lesson.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  z-index: 2;
 }
 
 .lesson-content {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  font-size: clamp(0.84rem, 1.44vw, 1.02rem);
+  gap: 2px;
+  font-size: clamp(0.7rem, 1.2vw, 0.85rem);
 }
 
-.lesson-content strong {
-  font-size: clamp(0.9rem, 1.56vw, 1.14rem);
+.lesson-content > * {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .lesson-content select {
-  margin-top: 3px;
-  background: white;
-  border: none;
-  border-radius: 2px;
-  padding: 1px;
-  font-size: clamp(0.78rem, 1.32vw, 0.96rem);
+  margin-top: auto;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 2px;
 }
 
-/* Media Queries for responsive design */
+.lesson-content select:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Enhanced Drag and Drop Styles */
+.timetable-cell {
+  position: relative;
+  transition: all 0.15s ease-in-out;
+}
+
+.timetable-cell.possible-slot {
+  background-color: rgba(96, 165, 250, 0.08);
+  border: 1px dashed #60a5fa;
+  animation: pulse 2s infinite;
+}
+
+.timetable-cell.possible-slot:hover {
+  background-color: rgba(96, 165, 250, 0.15);
+  border: 2px dashed #60a5fa;
+  animation: none;
+}
+
+.timetable-cell.droppable {
+  background-color: rgba(96, 165, 250, 0.25);
+  border: 2px solid #60a5fa;
+  transform: scale(1.02);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.4);
+  z-index: 2;
+}
+
+.timetable-cell.invalid-drop {
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 2px dashed #ef4444;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    border-color: rgba(96, 165, 250, 0.4);
+    background-color: rgba(96, 165, 250, 0.05);
+  }
+  50% {
+    border-color: rgba(96, 165, 250, 0.8);
+    background-color: rgba(96, 165, 250, 0.1);
+  }
+  100% {
+    border-color: rgba(96, 165, 250, 0.4);
+    background-color: rgba(96, 165, 250, 0.05);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Responsive Design */
 @media screen and (max-width: 1200px) {
   .timetable-wrapper {
     width: 98%;
@@ -223,30 +290,42 @@ pre {
 @media screen and (max-width: 800px) {
   .timetable-grid {
     grid-template-columns: minmax(84px, auto) repeat(13, minmax(60px, 1fr));
-    grid-template-rows: 46px repeat(5, minmax(66px, auto));
+    grid-template-rows: 42px repeat(5, minmax(60px, auto));
   }
   
   .timetable-cell.timetable-header {
-    height: 46px;
+    height: 42px;
   }
-  
+
   .lesson-content {
-    font-size: clamp(0.78rem, 1.2vw, 0.96rem);
+    font-size: clamp(0.65rem, 1vw, 0.8rem);
   }
 }
 
 @media screen and (max-width: 600px) {
+  .timetable-container {
+    padding: 0.25rem;
+  }
+  
   .timetable-wrapper {
     width: 100%;
   }
   
   .timetable-grid {
     grid-template-columns: minmax(72px, auto) repeat(13, minmax(54px, 1fr));
-    grid-template-rows: 40px repeat(5, minmax(59px, auto));
+    grid-template-rows: 36px repeat(5, minmax(54px, auto));
   }
   
   .timetable-cell {
-    padding: 0.18rem 0.3rem;
-    font-size: clamp(0.78rem, 1.44vw, 0.96rem);
+    padding: 0.15rem 0.25rem;
+    font-size: clamp(0.65rem, 1.2vw, 0.8rem);
+  }
+
+  .lesson-content {
+    font-size: clamp(0.6rem, 0.9vw, 0.75rem);
+  }
+
+  .lesson-content select {
+    font-size: clamp(0.55rem, 0.8vw, 0.7rem);
   }
 }
