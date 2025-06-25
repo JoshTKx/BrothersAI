@@ -1,4 +1,4 @@
-from .models import CustomUser
+from .models import CustomUser, FriendRequest
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 
@@ -42,4 +42,13 @@ class UserLoginSerializer(serializers.Serializer):
         user = authenticate(**data)
         if user and user.is_active:
             return user
-        raise serializers.ValidationError("Incorrect Credentials!")    
+        raise serializers.ValidationError("Incorrect Credentials!")
+    
+class FriendRequestSerializer(serializers.ModelSerializer):
+    from_user_email = serializers.EmailField(source='from_user.email', read_only=True)
+    to_user_email = serializers.EmailField(source='to_user.email', read_only=True)
+
+    class Meta:
+        model = FriendRequest
+        fields = ['id', 'from_user', 'from_user_email', 'to_user', 'to_user_email', 'status', 'timestamp']
+        read_only_fields = ['from_user', 'status', 'timestamp']

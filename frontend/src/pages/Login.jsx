@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import "./Login.css";
+import { useNavigate } from "react-router-dom"; 
 
 export default function Login() {
     const [formData, setFormData] = useState({
@@ -18,6 +20,7 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState(null);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -36,6 +39,7 @@ export default function Login() {
             setSuccessMessage("Login Successful!");
             localStorage.setItem("accessToken", response.data.tokens.access);
             localStorage.setItem("refreshToken", response.data.tokens.refresh);
+            navigate("/home");
         } catch (error) {
             console.log("Error during Login!", error.response?.data);
             if (error.response && error.response.data) {
@@ -90,6 +94,9 @@ export default function Login() {
                         {isLoading ? "Logging in..." : "Login"}
                     </button>
                 </form>
+                <p className="register-link">
+                    Don't have an account? <Link to="/register">Register here</Link>
+                </p>
             </div>
         </div>
     );

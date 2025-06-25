@@ -7,18 +7,18 @@ import Login from './pages/Login';
 import Layout from './pages/Layout';
 import './App.css';
 import Timetable from './pages/timetable';
+import RequireAuth from "./components/RequireAuth";
 
 function App() {
     return (
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Layout />}>
-                    <Route index element={<Home />} />
+                    <Route index element={<Login />} />
                     <Route path="register" element={<Register />} />
                     <Route path="login" element={<Login />} />
-                    <Route path="timetable" element={<Timetable />} />
-                    {/* Add more routes as needed */}
-                </Route>
+                    <Route path="timetable" element={<RequireAuth><Timetable /></RequireAuth>} />
+                    <Route path="home" element={<RequireAuth> <Home /> </RequireAuth>} /> </Route>
             </Routes>
         </BrowserRouter>
     );
