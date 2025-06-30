@@ -204,6 +204,8 @@ function Timetable() {
   const [draggedLesson, setDraggedLesson] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [possibleSlots, setPossibleSlots] = useState([]);
+  const [shareEmail, setShareEmail] = useState("");
+  const [shareStatus, setShareStatus] = useState("");
 
   // Fetch NUSMods module list and cache it
   useEffect(() => {
@@ -718,6 +720,38 @@ function Timetable() {
     return possible;
   };
 
+  const handleShare = async () => {
+    setShareStatus("");
+    if (!shareEmail) {
+      setShareStatus("Please enter an email to share with.");
+      return;
+    }
+    if (!timetable) {
+      setShareStatus("No timetable to share.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch(`${baseURL}timetableapi/timetable/share/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({ email: shareEmail, timetable }),
+      });
+      if (res.ok) {
+        setShareStatus("Timetable shared!");
+      } else {
+        const data = await res.json();
+        setShareStatus(data.error || "Failed to share timetable.");
+      }
+    } catch (e) {
+      setShareStatus("Network error while sharing.");
+    }
+  };
+
   return (
     <div className="timetable-container">
       <h1>NUS Modular System Timetable Planner</h1>
@@ -746,8 +780,21 @@ function Timetable() {
       />
       
       <button onClick={generateTimetable}>Generate Timetable</button>
-      
       {timetable && displayTimetableGrid(timetable)}
+      {/* Share section */}
+      <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="email"
+            placeholder="Recipient's email"
+            value={shareEmail}
+            onChange={e => setShareEmail(e.target.value)}
+            style={{ padding: 6, borderRadius: 4, border: '1px solid #ccc' }}
+          />
+          <button onClick={handleShare} style={{ padding: '6px 16px' }}>Share</button>
+        </div>
+        {shareStatus && <div style={{ marginTop: 8, color: shareStatus.includes('!') ? 'green' : 'red' }}>{shareStatus}</div>}
+      </div>
     </div>
   );
 }

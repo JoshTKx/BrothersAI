@@ -4,6 +4,16 @@ import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from threading import Lock
+from django.core.mail import send_mail
+from django.conf import settings
+from django.views.decorators.http import require_GET
+from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+
+from accounts.models import CustomUser
+from .models import SharedTimetable
 
 # Create your views here.
 MODULE_LIST_URL = 'https://api.nusmods.com/v2/2024-2025/moduleList.json'
@@ -45,37 +55,61 @@ def get_module_detail(requests, mod_code):
         return JsonResponse({'error': f'Failed to fetch module detail for {mod_code}'}, status=404)
     return JsonResponse(detail)
 
-@csrf_exempt
+@api_view(["POST"])
+@permission_classes([AllowAny])
 def generate_timetable(request):
-    if request.method == 'POST':
+    try:
+        data = request.data
+        modules = data.get('modules', [])
+        semester = data.get('semester', '')
+        timetable = {}
+        with cache_lock:
+            for mod_code in modules:
+                detail = fetch_module_detail(mod_code)
+                if not detail:
+                    continue
+                sem_data = [s for s in detail.get('semesterData', []) if str(s.get('semester')) == semester]
+                if not sem_data:
+                    continue
+                lessons = []
+                for lesson_type in ['Lecture', 'Tutorial', 'Laboratory', 'Sectional Teaching']:
+                    lessons += [l for l in sem_data[0].get('timetable', []) if l.get('lessonType') == lesson_type]
+                timetable[mod_code] = lessons
+        return Response(timetable)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def share_timetable(request):
+    try:
+        data = request.data
+        email = data.get('email')
+        timetable = data.get('timetable')
+        owner = request.user
+        if not email or not timetable:
+            return Response({'error': 'Missing email or timetable'}, status=400)
         try:
-            data = json.loads(request.body)
-            modules = data.get('modules', [])
-            semester = data.get('semester', '')
+            recipient = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'Recipient not found'}, status=404)
+        SharedTimetable.objects.create(owner=owner, recipient=recipient, timetable_data=timetable)
+        return Response({'success': True})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
 
-            # Use cached module details here for timetable generation
-            # For now, return mock timetable with lesson info from cache
-
-            timetable = {}
-
-            with cache_lock:
-                for mod_code in modules:
-                    detail = fetch_module_detail(mod_code)
-                    if not detail:
-                        continue
-                    # Filter lessons by semester
-                    sem_data = [s for s in detail.get('semesterData', []) if str(s.get('semester')) == semester]
-                    if not sem_data:
-                        continue
-                    # Collect lesson info (lectures, tutorials, etc) for that semester
-                    lessons = []
-                    for lesson_type in ['Lecture', 'Tutorial', 'Laboratory', 'Sectional Teaching']:
-                        lessons += [l for l in sem_data[0].get('timetable', []) if l.get('lessonType') == lesson_type]
-                    timetable[mod_code] = lessons
-
-            return JsonResponse(timetable)
-
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
-
-    return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def shared_with_me(request):
+    user = request.user
+    shared = SharedTimetable.objects.filter(recipient=user).order_by('-created_at')
+    result = [
+        {
+            'id': s.id,
+            'owner': s.owner.email,
+            'timetable_data': s.timetable_data,
+            'created_at': s.created_at.isoformat()
+        }
+        for s in shared
+    ]
+    return Response({'shared': result})

@@ -44,6 +44,7 @@ export default function Layout() {
               <Link to="/home">Home</Link>
               <Link to="/timetable">Timetable</Link>
               <Link to="/friends">Friends</Link>
+              <Link to="/shared-timetables">Shared With Me</Link>
               <button className="logout" onClick={handleLogout}>Logout</button>
 
             </nav>
