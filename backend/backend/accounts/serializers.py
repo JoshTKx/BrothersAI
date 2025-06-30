@@ -3,9 +3,21 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    friends = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
-        fields = ("id", "username", "email")
+        fields = ['id', 'username', 'email', 'friends']  # add other fields as needed
+
+    def get_friends(self, obj):
+        return [
+            {
+                "id": friend.id,
+                "username": friend.username,
+                "email": friend.email
+            }
+            for friend in obj.friends.all()
+        ]
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

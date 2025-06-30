@@ -33,7 +33,7 @@ export default function Layout() {
       console.error("Failed to logout", error.response?.data || error.message)
     }
   }
-  
+
   return (
     <div className="layout">
       {!hideTaskbar && (
@@ -43,6 +43,7 @@ export default function Layout() {
             <nav className="nav">
               <Link to="/home">Home</Link>
               <Link to="/timetable">Timetable</Link>
+              <Link to="/friends">Friends</Link>
               <button className="logout" onClick={handleLogout}>Logout</button>
 
             </nav>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./Register.css";
+import { useNavigate } from "react-router-dom"; 
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ export default function Register() {
     const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState(null);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
     
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -29,6 +31,7 @@ export default function Register() {
             const response = await axios.post("http://127.0.0.1:8000/api/register/", formData);
             console.log("Success!", response.data);
             setSuccessMessage("Registration Successful!");
+            navigate("/login");
         } catch (error) {
             console.log("Error during registration!", error.response?.data);
             if (error.response && error.response.data) {

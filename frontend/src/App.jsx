@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import Layout from './pages/Layout';
+import Friends from './pages/Friends';
 import './App.css';
 import Timetable from './pages/timetable';
 import RequireAuth from "./components/RequireAuth";
@@ -16,9 +17,11 @@ function App() {
                 <Route path="/" element={<Layout />}>
                     <Route index element={<Login />} />
                     <Route path="register" element={<Register />} />
+                    <Route path="friends" element={<RequireAuth><Friends /></RequireAuth>} />
                     <Route path="login" element={<Login />} />
                     <Route path="timetable" element={<RequireAuth><Timetable /></RequireAuth>} />
-                    <Route path="home" element={<RequireAuth> <Home /> </RequireAuth>} /> </Route>
+                    <Route path="home" element={<RequireAuth> <Home /> </RequireAuth>} /> 
+                    </Route>
             </Routes>
         </BrowserRouter>
     );
