@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework',  # Django REST Framework
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',  # CORS headers
+    'django_extensions',
 
 
 ]

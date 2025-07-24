@@ -35,3 +35,43 @@ class FriendRequest(models.Model):
 
     def __str__(self):
         return f"{self.from_user.email} ➡ {self.to_user.email} ({self.status})"
+    
+class Todo(models.Model):
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='todos')
+    title = models.CharField(max_length=255)
+    completed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+class FriendGroup(models.Model):
+    name = models.CharField(max_length=100)
+    owner = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='owned_groups')
+    members = models.ManyToManyField('CustomUser', related_name='friend_groups')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} (Owner: {self.owner.email})"
+
+class GroupMeetup(models.Model):
+    group = models.ForeignKey(FriendGroup, on_delete=models.CASCADE, related_name='meetups')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    location = models.CharField(max_length=255)
+    time = models.DateTimeField()
+    created_by = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} for {self.group.name} at {self.time}"
+
+class GroupTodo(models.Model):
+    group = models.ForeignKey(FriendGroup, on_delete=models.CASCADE, related_name='group_todos')
+    title = models.CharField(max_length=255)
+    completed = models.BooleanField(default=False)
+    created_by = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} ({'Done' if self.completed else 'Pending'}) for {self.group.name}"

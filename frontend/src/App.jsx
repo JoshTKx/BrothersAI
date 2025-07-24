@@ -10,6 +10,7 @@ import './App.css';
 import Timetable from './pages/timetable';
 import SharedTimetables from './pages/SharedTimetables';
 import RequireAuth from "./components/RequireAuth";
+import FriendGroups from './pages/FriendGroups';
 
 function App() {
     return (
@@ -23,6 +24,7 @@ function App() {
                     <Route path="timetable" element={<RequireAuth><Timetable /></RequireAuth>} />
                     <Route path="home" element={<RequireAuth> <Home /> </RequireAuth>} /> 
                     <Route path="/shared-timetables" element={<RequireAuth><SharedTimetables /></RequireAuth>} />
+                    <Route path="friend-groups" element={<RequireAuth><FriendGroups /></RequireAuth>} />
                     </Route>
             </Routes>
         </BrowserRouter>

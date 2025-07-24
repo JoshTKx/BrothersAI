@@ -1,0 +1,70 @@
+.friend-groups-page {
+  max-width: 600px;
+  margin: 2em auto;
+  background: #f9f9f9;
+  border-radius: 10px;
+  padding: 2em;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.friend-groups-page h1 {
+  margin-top: 0;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 2em;
+}
+
+.friend-groups-page form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  margin-bottom: 2em;
+}
+
+.friend-groups-page input[type="text"] {
+  flex: 1 1 180px;
+  padding: 0.5em;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.friend-groups-page button[type="submit"] {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5em 1.2em;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.friend-groups-page button[type="submit"]:hover {
+  background: #1d4ed8;
+}
+
+.friend-groups-page ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.friend-groups-page li {
+  background: #fff;
+  border-radius: 6px;
+  margin-bottom: 1em;
+  padding: 1em;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  font-size: 1.05em;
+}
+
+.friend-groups-page strong {
+  color: #2563eb;
+}
+
+.friend-groups-page h2 {
+  margin-top: 2em;
+  font-size: 1.3em;
+  color: #374151;
+}

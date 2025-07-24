@@ -11,4 +11,13 @@ urlpatterns = [
     path('friend-request/', SendFriendRequestView.as_view(), name='send-friend-request'),
     path('friend-request/<int:pk>/respond/', RespondFriendRequestView.as_view(), name='respond-friend-request'),
     path('friend-requests/', ListFriendRequestsView.as_view(), name='list-friend-requests'),
+    path('friends/', FriendsListView.as_view(), name='friends-list'),
+    path('todos/', TodoListCreateView.as_view(), name='todo-list-create'),
+    path('todos/<int:pk>/', TodoDetailView.as_view(), name='todo-detail'),
+    path('friend-groups/', FriendGroupListCreateView.as_view(), name='friend-group-list-create'),
+    path('friend-groups/<int:pk>/', FriendGroupDetailView.as_view(), name='friend-group-detail'),
+    path('group-meetups/', GroupMeetupListCreateView.as_view(), name='group-meetup-list-create'),
+    path('group-meetups/<int:pk>/', GroupMeetupDetailView.as_view(), name='group-meetup-detail'),
+    path('group-todos/', GroupTodoListCreateView.as_view(), name='group-todo-list-create'),
+    path('group-todos/<int:pk>/', GroupTodoDetailView.as_view(), name='group-todo-detail'),
 ]

@@ -4,8 +4,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .serializers import *
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework.views import APIView
+
+
+
 
 class UserRegistrationAPIView(GenericAPIView):
     permission_classes = (AllowAny,)
@@ -109,3 +112,96 @@ class ListFriendRequestsView(APIView):
             'sent': FriendRequestSerializer(sent, many=True).data
         })
     
+class TodoListCreateView(generics.ListCreateAPIView):
+    serializer_class = TodoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Todo.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class TodoDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TodoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Todo.objects.filter(user=self.request.user)
+    
+
+class FriendGroupListCreateView(generics.ListCreateAPIView):
+    serializer_class = FriendGroupSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Show groups where user is a member or owner
+        return (
+        FriendGroup.objects.filter(members=self.request.user) |
+        FriendGroup.objects.filter(owner=self.request.user)
+    ).distinct()
+
+    def perform_create(self, serializer):
+        # Accept usernames from the request
+        member_usernames = self.request.data.get('members', [])
+        if isinstance(member_usernames, str):
+            # If sent as comma-separated string, split it
+            member_usernames = [u.strip() for u in member_usernames.split(',') if u.strip()]
+        # Look up users by username
+        members = CustomUser.objects.filter(username__in=member_usernames)
+        group = serializer.save(owner=self.request.user)
+        # Optionally add the owner as a member
+        group.members.set(list(members) + [self.request.user])
+
+class FriendGroupDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = FriendGroupSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return FriendGroup.objects.filter(owner=self.request.user)
+
+# Group Meetups
+class GroupMeetupListCreateView(generics.ListCreateAPIView):
+    serializer_class = GroupMeetupSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only meetups for groups the user is a member of
+        return GroupMeetup.objects.filter(group__members=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+class GroupMeetupDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = GroupMeetupSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return GroupMeetup.objects.filter(group__members=self.request.user)
+
+# Group Todos
+class GroupTodoListCreateView(generics.ListCreateAPIView):
+    serializer_class = GroupTodoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return GroupTodo.objects.filter(group__members=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+class GroupTodoDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = GroupTodoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return GroupTodo.objects.filter(group__members=self.request.user)
+
+class FriendsListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Assuming you have a 'friends' ManyToManyField on your CustomUser model
+        friends = request.user.friends.all()
+        data = [{"username": friend.username, "email": friend.email} for friend in friends]
+        return Response(data)

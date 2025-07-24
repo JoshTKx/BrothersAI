@@ -1,4 +1,4 @@
-from .models import CustomUser, FriendRequest
+from .models import CustomUser, FriendRequest, Todo, FriendGroup, GroupMeetup, GroupTodo
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 
@@ -64,3 +64,39 @@ class FriendRequestSerializer(serializers.ModelSerializer):
         model = FriendRequest
         fields = ['id', 'from_user', 'from_user_email', 'to_user', 'to_user_email', 'status', 'timestamp']
         read_only_fields = ['from_user', 'status', 'timestamp']
+
+class TodoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Todo
+        fields = ['id', 'title', 'completed', 'created_at']
+
+class FriendGroupSerializer(serializers.ModelSerializer):
+    members = serializers.SlugRelatedField(
+        many=True,
+        queryset=CustomUser.objects.all(),
+        slug_field='username'
+    )
+    owner = serializers.SlugRelatedField(read_only=True, slug_field='username')
+
+    class Meta:
+        model = FriendGroup
+        fields = ['id', 'name', 'owner', 'members', 'created_at']
+        read_only_fields = ['owner', 'created_at']
+
+class GroupMeetupSerializer(serializers.ModelSerializer):
+    group = serializers.PrimaryKeyRelatedField(queryset=FriendGroup.objects.all())
+    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = GroupMeetup
+        fields = ['id', 'group', 'title', 'description', 'location', 'time', 'created_by', 'created_at']
+        read_only_fields = ['created_by', 'created_at']
+
+class GroupTodoSerializer(serializers.ModelSerializer):
+    group = serializers.PrimaryKeyRelatedField(queryset=FriendGroup.objects.all())
+    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = GroupTodo
+        fields = ['id', 'group', 'title', 'completed', 'created_by', 'created_at']
+        read_only_fields = ['created_by', 'created_at']

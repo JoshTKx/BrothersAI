@@ -2,52 +2,55 @@ import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import './Home.css'
+import TodoList from './TodoList'
+
 
 export default function Home() {
-  const [username, setUsername] = useState("")
+  const [user, setUser] = useState(null)
   const [isLoggedIn, setLoggedIn] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const checkLoggedInUser = async () => {
-      try {
-        const token = localStorage.getItem("accessToken")
-        if (token) {
-          const config = {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-          const response = await axios.get("http://127.0.0.1:8000/api/user/", config)
-          setLoggedIn(true)
-          setUsername(response.data.username)
-        } else {
-          setLoggedIn(false)
-          setUsername("")
-          navigate("/login")
-        }
-      } catch {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("accessToken")
+      if (!token) {
         setLoggedIn(false)
-        setUsername("")
+        setUser(null)
+        navigate("/login")
+        return
+      }
+      try {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+        const response = await axios.get("http://127.0.0.1:8000/api/user/", config)
+        setUser(response.data)
+        setLoggedIn(true)
+      } catch (err) {
+        setLoggedIn(false)
+        setUser(null)
         navigate("/login")
       }
     }
-    checkLoggedInUser()
-  }, [])
+    fetchUser()
+  }, [navigate])
 
-
-
-  return (
+return (
     <div className="dashboard">
       <header className="header">
-        <h1 className="logo"> Welcome to BrothersAI</h1>
+        <h1 className="logo">User Profile</h1>
       </header>
-
       <main className="card">
-        {isLoggedIn ? (
+        {isLoggedIn && user ? (
           <>
-            <h2 className="welcome">Welcome back, <span className="highlight">{username}</span> 👋</h2>
-            <p className="desc">You're now logged in to BrothersAI.</p>
+            <div className="profile-info">
+              <h2 className="welcome">Welcome, <span className="highlight">{user.username}</span> 👋</h2>
+              <p><strong>Username:</strong> {user.username}</p>
+              <p><strong>Email:</strong> {user.email}</p>
+            </div>
+            <TodoList />
           </>
         ) : (
           <>
