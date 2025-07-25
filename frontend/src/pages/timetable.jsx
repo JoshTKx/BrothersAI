@@ -1,60 +1,94 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import './Timetable.css';
-
-
-const baseURL = 'http://127.0.0.1:8000/';
+import axiosInstance from '../utils/axiosConfig';
 
 // Time string utilities
 const normalizeTimeString = (timeStr) => {
+  if (!timeStr) return "00:00"; // Handle undefined or empty string
   // Handle both "1200" and "12:00" formats
-  return timeStr.includes(":") ? timeStr : 
-         `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
+  return String(timeStr).includes(":") ? timeStr : 
+         `${String(timeStr).slice(0, 2)}:${String(timeStr).slice(2)}`;
 };
 
 const getHoursFromTime = (timeStr) => {
-  const normalized = normalizeTimeString(timeStr);
-  const [hours] = normalized.split(':').map(Number);
-  return hours;
+  try {
+    const normalized = normalizeTimeString(timeStr);
+    const [hours] = normalized.split(':').map(Number);
+    return isNaN(hours) ? 0 : hours;
+  } catch (error) {
+    console.error('Error parsing hours from time:', error);
+    return 0;
+  }
 };
 
 const parseTime = (timeStr) => {
-  // Handle both "1200" and "12:00" formats
-  const normalized = timeStr.includes(":") ? timeStr : 
-                    `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
-  const [hours, minutes] = normalized.split(':').map(Number);
-  return { hours, minutes };
+  try {
+    // Handle both "1200" and "12:00" formats
+    const normalized = normalizeTimeString(timeStr);
+    const [hours, minutes] = normalized.split(':').map(Number);
+    return { 
+      hours: isNaN(hours) ? 0 : hours, 
+      minutes: isNaN(minutes) ? 0 : minutes 
+    };
+  } catch (error) {
+    console.error('Error parsing time:', error);
+    return { hours: 0, minutes: 0 };
+  }
 };
 
+// Define weekdays array as a constant at module level
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
 // Calculate grid position and duration
-const calculateGridPosition = (startTime, endTime, day, weekdays) => {
-  const start = parseTime(startTime);
-  const end = parseTime(endTime);
-  const dayIndex = weekdays.indexOf(day);
-  
-  // Grid starts at 8:00, columns are 1-based (first column is day labels)
-  const startColumn = (start.hours - 8) + 2; // +2 because first column is day labels
-  const duration = end.hours - start.hours;
-  const row = dayIndex + 2; // +2 because first row is time headers
-  
-  return { startColumn, duration, row };
+const calculateGridPosition = (startTime, endTime, day, weekdays = WEEKDAYS) => {
+  try {
+    if (!startTime || !endTime || !day) {
+      console.error('Missing required data:', { startTime, endTime, day });
+      return { startColumn: 0, duration: 0, row: 0 };
+    }
+
+    const start = parseTime(startTime);
+    const end = parseTime(endTime);
+    const dayIndex = weekdays?.indexOf(day) ?? -1;
+    
+    if (dayIndex === -1) {
+      console.error(`Invalid day "${day}" or weekdays array`);
+      return { startColumn: 0, duration: 0, row: 0 };
+    }
+    
+    // Grid starts at 8:00, columns are 1-based (first column is day labels)
+    const startColumn = (start.hours - 8) + 2; // +2 because first column is day labels
+    const duration = end.hours - start.hours;
+    const row = dayIndex + 2; // +2 because first row is time headers
+    
+    return { startColumn, duration, row };
+  } catch (error) {
+    console.error('Error calculating grid position:', error);
+    return { startColumn: 0, duration: 0, row: 0 };
+  }
 };
 
 const timeToRow = (timeStr) => {
-  // Handle both "1200" and "12:00" formats
-  const normalized = timeStr.includes(":") ? timeStr : 
-                    `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
-  const [hrs, mins] = normalized.split(':').map(Number);
-  // Account for the header row and convert to grid row
-  return hrs - 7; // Grid starts at 8am (row 2), so offset by 7
+  try {
+    const { hours } = parseTime(timeStr);
+    // Account for the header row and convert to grid row
+    return hours - 7; // Grid starts at 8am (row 2), so offset by 7
+  } catch (error) {
+    console.error('Error converting time to row:', error);
+    return 0;
+  }
 };
 
 // Convert a time string to a column position
 const timeToColumn = (timeStr) => {
-  const normalized = timeStr.includes(":") ? timeStr : 
-                    `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
-  const [hrs] = normalized.split(':').map(Number);
-  return hrs - 7; // Grid starts at 8am (column 2), so offset by 7
+  try {
+    const { hours } = parseTime(timeStr);
+    return hours - 7; // Grid starts at 8am (column 2), so offset by 7
+  } catch (error) {
+    console.error('Error converting time to column:', error);
+    return 0;
+  }
 };
 
 // Calculate duration in grid cells
@@ -106,8 +140,7 @@ const LessonBlock = ({
   onDragStart: handleDragStart,
   onDragEnd: handleDragEnd,
   onSlotChange: handleSlotChange,
-  getColorForModule,
-  weekdays
+  getColorForModule
 }) => {
   const onDragStart = (e) => {
     // Prevent drag start if the click was on the select element
@@ -132,7 +165,7 @@ const LessonBlock = ({
       onDragEnd={handleDragEnd}
       style={{
         gridColumn: `${timeToColumn(lesson.startTime)} / span ${calculateDuration(lesson.startTime, lesson.endTime)}`,
-        gridRow: weekdays.indexOf(lesson.day) + 2,
+        gridRow: WEEKDAYS.indexOf(lesson.day) + 2,
         backgroundColor: getColorForModule(modCode)
       }}
     >
@@ -191,7 +224,6 @@ const hasClashes = (currentLessons, modifiedModCode, newLesson) => {
 };
 
 function Timetable() {
-
   const [moduleInput, setModuleInput] = useState('');
   const [modules, setModules] = useState([]);
   const [nusModsCache, setNusModsCache] = useState([]);
@@ -207,19 +239,72 @@ function Timetable() {
   const [shareEmail, setShareEmail] = useState("");
   const [shareStatus, setShareStatus] = useState("");
 
+  const loadSavedTimetable = async () => {
+    try {
+      const response = await axiosInstance.get(`/timetableapi/timetable/my-timetable/?semester=${semester}`);
+      if (!response?.data) return;
+      
+      setModules(response.data.modules || []);
+      const data = response.data.timetable_data;
+      console.log("Loaded saved timetable:", data);
+      
+      if (!data) return;
+      
+      const initialSelections = {};
+      const alternatives = {};
+      // Process the loaded timetable data same way as generation
+      Object.entries(data).forEach(([modCode, lessons]) => {
+        const lessonsByType = {};
+        lessons.forEach(lesson => {
+          const type = lesson.lessonType;
+          if (!lessonsByType[type]) {
+            lessonsByType[type] = [];
+          }
+          lessonsByType[type].push(lesson);
+        });
+
+        Object.entries(lessonsByType).forEach(([type, typeLessons]) => {
+          const byClassNo = {};
+          typeLessons.forEach(lesson => {
+            if (!byClassNo[lesson.classNo]) {
+              byClassNo[lesson.classNo] = [];
+            }
+            byClassNo[lesson.classNo].push(lesson);
+          });
+
+          // For each lesson type in a module, take the first class's lessons
+          const classNumbers = Object.keys(byClassNo);
+          if (classNumbers.length > 0) {
+            const selectedClassNo = classNumbers[0];
+            initialSelections[`${modCode}-${type}`] = byClassNo[selectedClassNo];
+            alternatives[`${modCode}-${type}`] = classNumbers.slice(1).map(classNo => byClassNo[classNo]);
+          }
+        });
+      });
+
+      setSelectedLessons(initialSelections);
+      setAlternativeSlots(alternatives);
+      setTimetable(data);
+    } catch (error) {
+      // Only log real errors, ignore 404 (no timetable found)
+      if (error.response?.status !== 404) {
+        console.error("Failed to load saved timetable:", error);
+      }
+    }
+  };
+
   // Fetch NUSMods module list and cache it
   useEffect(() => {
     const fetchModuleData = async() => {
       try {
-        const res = await fetch(`${baseURL}timetableapi/modules/`)
-        if(!res.ok) throw new Error('Failed to fetch module list');
-        const data = await res.json();
-        setNusModsCache(data);
+        const res = await axiosInstance.get('/timetableapi/modules/');
+        setNusModsCache(res.data);
       } catch(err) {
         setError('Failed to fetch module data');
       }
     };
     fetchModuleData();
+    loadSavedTimetable();
   }, []);
 
   useEffect(() => {
@@ -235,9 +320,8 @@ function Timetable() {
 
   const isModuleOfferedInSem = async (modCode, sem) => {
     try {
-      const res = await fetch(`${baseURL}timetableapi/modules/${modCode}`);
-      if(!res.ok) return false;
-      const data = await res.json();
+      const res = await axiosInstance.get(`/timetableapi/modules/${modCode}`);
+      const data = res.data;
       return data.semesterData.some(s => String(s.semester) === sem);
     } catch {
       return false;
@@ -310,21 +394,26 @@ function Timetable() {
     }
 
     try {
-      const resp = await fetch(`${baseURL}timetableapi/generate-timetable/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({modules, semester}),
+      // Generate timetable
+      const resp = await axiosInstance.post('/timetableapi/generate-timetable/', {
+        modules,
+        semester
       });
       
-      if (!resp.ok) {
-        const errData = await resp.json();
-        setError(errData.error || 'Failed to generate timetable');
-        return;
+      const data = resp.data;
+      
+      // Save the generated timetable
+      try {
+        await axiosInstance.post('/timetableapi/timetable/save/', {
+          modules,
+          semester,
+          timetable_data: data
+        });
+        console.log("Timetable saved successfully");
+      } catch (saveError) {
+        console.error("Failed to save timetable:", saveError);
+        // Continue even if save fails - user can still use the generated timetable
       }
-
-      const data = await resp.json();
       console.log("Generated Timetable:" , data);
       const initialSelections = {};
       const alternatives = {};
@@ -374,7 +463,22 @@ function Timetable() {
   };
 
   const handleSlotChange = (lessonKey, selectedValue) => {
-    const newLessons = JSON.parse(selectedValue);
+    let newLessons;
+    try {
+      newLessons = JSON.parse(selectedValue);
+    } catch (error) {
+      console.error('Failed to parse lesson data:', error);
+      return;
+    }
+    
+    // Validate the new lessons data
+    if (!Array.isArray(newLessons) || !newLessons.every(lesson => 
+      lesson && lesson.startTime && lesson.endTime && lesson.day && 
+      WEEKDAYS.includes(lesson.day)
+    )) {
+      console.error('Invalid lesson data:', newLessons);
+      return;
+    }
     
     // Check if any of the new lessons clash with existing lessons
     const hasClash = Object.entries(selectedLessons).some(([key, lessons]) => {
@@ -384,6 +488,7 @@ function Timetable() {
       const existingLessons = Array.isArray(lessons) ? lessons : [lessons];
       
       return existingLessons.some(existing => 
+        existing && existing.day && // Validate existing lesson
         newLessons.some(newLesson =>
           existing.day === newLesson.day &&
           (
@@ -405,8 +510,6 @@ function Timetable() {
       [lessonKey]: newLessons
     }));
   };
-
-  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   // Create a map to store module colors
   const [moduleColors] = useState(() => {
@@ -473,7 +576,7 @@ function Timetable() {
           ))}
           
           {/* Days and time slots */}
-          {weekdays.map((day, dayIndex) => (
+          {WEEKDAYS.map((day, dayIndex) => (
             <React.Fragment key={day}>
               {/* Day header */}
               <div 
@@ -510,12 +613,14 @@ function Timetable() {
             const [modCode, type] = lessonKey.split('-');
             const lessonArray = Array.isArray(lessons) ? lessons : [lessons];
 
-            return lessonArray.map((lesson, index) => {
+            return lessonArray.filter(lesson => 
+              lesson && lesson.startTime && lesson.endTime && lesson.day
+            ).map((lesson, index) => {
               const { startColumn, duration, row } = calculateGridPosition(
                 lesson.startTime,
                 lesson.endTime,
                 lesson.day,
-                weekdays
+                WEEKDAYS
               );
 
               const onLessonDragStart = (e) => {
@@ -726,29 +831,29 @@ function Timetable() {
       setShareStatus("Please enter an email to share with.");
       return;
     }
-    if (!timetable) {
+    if (!timetable || !modules || modules.length === 0) {
       setShareStatus("No timetable to share.");
       return;
     }
+
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${baseURL}timetableapi/timetable/share/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        credentials: "include",
-        body: JSON.stringify({ email: shareEmail, timetable }),
+      // Create a complete timetable object with all necessary data
+      const completeData = {
+        modules: modules,
+        semester: semester,
+        timetable_data: timetable,
+        selected_lessons: selectedLessons,
+        alternative_slots: alternativeSlots
+      };
+
+      const res = await axiosInstance.post('/timetableapi/timetable/share/', {
+        email: shareEmail,
+        timetable: completeData
       });
-      if (res.ok) {
-        setShareStatus("Timetable shared!");
-      } else {
-        const data = await res.json();
-        setShareStatus(data.error || "Failed to share timetable.");
-      }
+      setShareStatus("Timetable shared successfully!");
+      setShareEmail(""); // Clear the email input after successful share
     } catch (e) {
-      setShareStatus("Network error while sharing.");
+      setShareStatus(e.response?.data?.error || "Failed to share timetable.");
     }
   };
 

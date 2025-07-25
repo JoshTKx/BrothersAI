@@ -8,4 +8,7 @@ urlpatterns = [
     path('generate-timetable/', views.generate_timetable),
     path('timetable/share/', views.share_timetable),
     path('timetable/shared-with-me/', views.shared_with_me),
+    path('timetable/save/', views.save_timetable),
+    path('timetable/my-timetable/', views.get_user_timetable),
+    path('timetable/accept-shared/<int:shared_id>/', views.accept_shared_timetable),
 ]

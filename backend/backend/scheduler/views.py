@@ -13,7 +13,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.models import CustomUser
-from .models import SharedTimetable
+from .models import SharedTimetable, UserTimetable
 
 # Create your views here.
 MODULE_LIST_URL = 'https://api.nusmods.com/v2/2024-2025/moduleList.json'
@@ -87,16 +87,140 @@ def share_timetable(request):
         email = data.get('email')
         timetable = data.get('timetable')
         owner = request.user
-        if not email or not timetable:
-            return Response({'error': 'Missing email or timetable'}, status=400)
+
+        # Validate required data
+        if not email:
+            return Response({'error': 'Email is required'}, status=400)
+        if not timetable:
+            return Response({'error': 'Timetable data is required'}, status=400)
+        if not isinstance(timetable, dict):
+            return Response({'error': 'Invalid timetable format'}, status=400)
+        
+        # Validate all required timetable components
+        required_fields = ['modules', 'semester', 'timetable_data', 'selected_lessons']
+        missing_fields = [field for field in required_fields if field not in timetable]
+        if missing_fields:
+            return Response({'error': f'Missing required fields: {", ".join(missing_fields)}'}, status=400)
+
         try:
             recipient = CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
             return Response({'error': 'Recipient not found'}, status=404)
-        SharedTimetable.objects.create(owner=owner, recipient=recipient, timetable_data=timetable)
-        return Response({'success': True})
+
+        # Check if recipient is the same as sender
+        if recipient == owner:
+            return Response({'error': 'Cannot share timetable with yourself'}, status=400)
+
+        # Create shared timetable with complete data
+        shared = SharedTimetable.objects.create(
+            owner=owner,
+            recipient=recipient,
+            timetable_data=timetable
+        )
+
+        return Response({
+            'success': True,
+            'message': f'Timetable shared successfully with {recipient.email}'
+        })
     except Exception as e:
+        import traceback
+        print("Error sharing timetable:", str(e))
+        print(traceback.format_exc())
         return Response({'error': str(e)}, status=400)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def save_timetable(request):
+    user = request.user
+    data = request.data
+    
+    # Validate required fields
+    required_fields = ['modules', 'semester', 'timetable_data']
+    missing_fields = [field for field in required_fields if not data.get(field)]
+    if missing_fields:
+        return Response({
+            'error': f'Missing required fields: {", ".join(missing_fields)}'
+        }, status=400)
+    
+    try:
+        # Validate data types
+        if not isinstance(data['modules'], list):
+            return Response({'error': 'modules must be a list'}, status=400)
+        
+        if not isinstance(data['timetable_data'], dict):
+            return Response({'error': 'timetable_data must be an object'}, status=400)
+        
+        if not str(data['semester']):
+            return Response({'error': 'semester must be a string or number'}, status=400)
+        
+        # Create or update the user's timetable
+        timetable = UserTimetable.objects.filter(
+            user=user,
+            semester=str(data['semester']),
+        ).first()
+        
+        if timetable:
+            # Update existing timetable
+            timetable.modules = data['modules']
+            timetable.timetable_data = data['timetable_data']
+            timetable.is_active = True
+            timetable.save()
+        else:
+            # Create new timetable
+            timetable = UserTimetable.objects.create(
+                user=user,
+                semester=str(data['semester']),
+                modules=data['modules'],
+                timetable_data=data['timetable_data'],
+                is_active=True
+            )
+        
+        return Response({
+            'message': 'Timetable saved successfully',
+            'id': timetable.id,
+            'created_at': timetable.created_at.isoformat(),
+            'updated_at': timetable.updated_at.isoformat()
+        })
+    except Exception as e:
+        import traceback
+        print("Error saving timetable:", str(e))
+        print(traceback.format_exc())
+        return Response({
+            'error': 'An error occurred while saving the timetable. Please try again.'
+        }, status=500)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_user_timetable(request):
+    user = request.user
+    semester = request.query_params.get('semester')
+    
+    try:
+        if semester:
+            timetable = UserTimetable.objects.filter(
+                user=user,
+                semester=semester,
+                is_active=True
+            ).first()
+        else:
+            timetable = UserTimetable.objects.filter(
+                user=user,
+                is_active=True
+            ).first()
+        
+        if not timetable:
+            return Response({'message': 'No timetable found'}, status=404)
+            
+        return Response({
+            'id': timetable.id,
+            'semester': timetable.semester,
+            'modules': timetable.modules,
+            'timetable_data': timetable.timetable_data,
+            'created_at': timetable.created_at.isoformat(),
+            'updated_at': timetable.updated_at.isoformat()
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -113,3 +237,29 @@ def shared_with_me(request):
         for s in shared
     ]
     return Response({'shared': result})
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def accept_shared_timetable(request, shared_id):
+    try:
+        shared = SharedTimetable.objects.get(id=shared_id, recipient=request.user)
+        timetable_data = shared.timetable_data
+        
+        # Create a new UserTimetable from the shared data
+        timetable = UserTimetable.objects.create(
+            user=request.user,
+            semester=timetable_data['semester'],
+            modules=timetable_data['modules'],
+            timetable_data=timetable_data['timetable_data'],
+            is_active=True
+        )
+        
+        return Response({
+            'message': 'Shared timetable accepted successfully',
+            'id': timetable.id
+        })
+    except SharedTimetable.DoesNotExist:
+        return Response({'error': 'Shared timetable not found'}, status=404)
+    except Exception as e:
+        print("Error accepting shared timetable:", str(e))
+        return Response({'error': str(e)}, status=400)
