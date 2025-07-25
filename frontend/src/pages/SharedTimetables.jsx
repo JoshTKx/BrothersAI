@@ -17,13 +17,54 @@ function getColorForModule(modCode) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-function displayTimetableGrid(timetable) {
-  // timetable: { [modCode]: [lesson, ...] }
+function displayTimetableGrid(timetableData) {
+    // Validate input and unwrap timetable data
+  if (!timetableData || typeof timetableData !== 'object') {
+    console.error('Invalid timetable data:', timetableData);
+    return null;
+  }
+
+  // The timetable data is a direct mapping of module codes to lesson arrays
+  const moduleData = timetableData.timetable_data || timetableData;
+  console.log('Processing module data:', moduleData);
+
+  // Debug log an example lesson from each module
+  Object.entries(moduleData).forEach(([modCode, lessons]) => {
+    if (Array.isArray(lessons) && lessons.length > 0) {
+      console.log(`Example lesson for ${modCode}:`, lessons[0]);
+    }
+  });
+
   // Flatten lessons for grid placement
   const lessons = [];
-  Object.entries(timetable).forEach(([modCode, lessonArr]) => {
-    lessonArr.forEach(lesson => lessons.push({ ...lesson, modCode }));
-  });
+  try {
+    Object.entries(moduleData).forEach(([modCode, lessonArr]) => {
+      if (!Array.isArray(lessonArr)) {
+        console.warn(`Expected array for module ${modCode}, got:`, lessonArr);
+        return;
+      }
+      
+      lessonArr.forEach(lesson => {
+        if (lesson && typeof lesson === 'object' && lesson.day && lesson.startTime && lesson.endTime) {
+          // Format times from "1200" to "12:00" format
+          const formattedStartTime = `${lesson.startTime.slice(0, 2)}:${lesson.startTime.slice(2)}`;
+          const formattedEndTime = `${lesson.endTime.slice(0, 2)}:${lesson.endTime.slice(2)}`;
+          
+          lessons.push({
+            ...lesson,
+            modCode,
+            startTime: formattedStartTime,
+            endTime: formattedEndTime
+          });
+        } else {
+          console.warn(`Invalid lesson data for ${modCode}:`, lesson);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error processing timetable:', error);
+    return null;
+  }
 
   return (
     <div className="timetable-wrapper">
@@ -46,10 +87,11 @@ function displayTimetableGrid(timetable) {
         {/* Lesson blocks */}
         {lessons.map((lesson, idx) => {
           const dayIdx = weekdays.indexOf(lesson.day);
-          const startHour = parseInt(lesson.startTime.split(':')[0]);
-          const endHour = parseInt(lesson.endTime.split(':')[0]);
-          const startColumn = startHour - 8 + 2;
-          const duration = endHour - startHour;
+          // Convert time strings to hours for grid positioning
+          const startHour = parseInt(lesson.startTime);
+          const endHour = parseInt(lesson.endTime);
+          const startColumn = (startHour/100) - 8 + 2;
+          const duration = (endHour - startHour)/100;
           const row = dayIdx + 2;
           return (
             <div
@@ -101,7 +143,11 @@ export default function SharedTimetables() {
           return;
         }
         const data = await res.json();
-        setShared(data.shared || []);
+        console.log('Received shared timetables:', data);
+        if (!data.shared || !Array.isArray(data.shared)) {
+          throw new Error('Invalid response format');
+        }
+        setShared(data.shared);
       } catch (e) {
         setError('Network error');
       }
@@ -120,7 +166,9 @@ export default function SharedTimetables() {
         <div key={item.id} style={{ border: '1px solid #ccc', borderRadius: 8, margin: '24px 0', padding: 16, background: '#fafbfc' }}>
           <div style={{ marginBottom: 8 }}><strong>From:</strong> {item.owner}</div>
           <div style={{ marginBottom: 16 }}><strong>Shared at:</strong> {new Date(item.created_at).toLocaleString()}</div>
-          {displayTimetableGrid(item.timetable_data)}
+          <div style={{ overflow: 'auto' }}>
+            {displayTimetableGrid(item.timetable_data)}
+          </div>
         </div>
       ))}
     </div>
