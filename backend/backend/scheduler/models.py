@@ -28,6 +28,23 @@ class UserTimetable(models.Model):
             UserTimetable.objects.filter(user=self.user, is_active=True).update(is_active=False)
         super().save(*args, **kwargs)
 
+class CompletedCourse(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='completed_courses', on_delete=models.CASCADE)
+    module_code = models.CharField(max_length=20)  # e.g., "CS2040S"
+    semester = models.CharField(max_length=20)  # e.g., "AY22/23-1"
+    academic_year = models.CharField(max_length=20)  # e.g., "AY22/23"
+    grade = models.CharField(max_length=5, null=True, blank=True)  # Optional grade field
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-academic_year', 'semester', 'module_code']
+        # Ensure a user can't add the same module multiple times in the same semester
+        unique_together = ['user', 'module_code', 'semester']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.module_code} ({self.semester})"
+
 class SharedTimetable(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='shared_timetables_sent', on_delete=models.CASCADE)
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='shared_timetables_received', on_delete=models.CASCADE)

@@ -13,11 +13,36 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.models import CustomUser
-from .models import SharedTimetable, UserTimetable
+from .models import SharedTimetable, UserTimetable, CompletedCourse
+from .serializers import CompletedCourseSerializer
+from .course_recommender import CourseRecommender
 
 # Create your views here.
 MODULE_LIST_URL = 'https://api.nusmods.com/v2/2024-2025/moduleList.json'
 MODULE_DETAIL_URL_TEMPLATE = 'https://api.nusmods.com/v2/2024-2025/modules/{}.json'
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_course_recommendations(request):
+    """Get AI-powered course recommendations based on completed courses"""
+    try:
+        # Get user's completed courses
+        completed_courses = CompletedCourse.objects.filter(user=request.user)
+        
+        # Initialize recommender
+        recommender = CourseRecommender()
+        
+        # Get recommendations
+        recommendations = recommender.get_recommendations(completed_courses)
+        
+        return Response({
+            'recommendations': recommendations
+        })
+    except Exception as e:
+        return Response({
+            'error': 'Failed to get recommendations',
+            'detail': str(e)
+        }, status=500)
 
 module_list_cache = None
 module_details_cache = {}
@@ -47,6 +72,33 @@ def get_module_list(requests):
     if modules is None:
         return JsonResponse({'error': 'Failed to fetch module list'}, status=500)
     return JsonResponse(modules, safe=False)
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def completed_courses_list(request):
+    if request.method == 'GET':
+        courses = CompletedCourse.objects.filter(user=request.user)
+        serializer = CompletedCourseSerializer(courses, many=True)
+        return Response({'courses': serializer.data})
+    
+    elif request.method == 'POST':
+        serializer = CompletedCourseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def completed_course_detail(request, pk):
+    try:
+        course = CompletedCourse.objects.get(pk=pk, user=request.user)
+    except CompletedCourse.DoesNotExist:
+        return Response(status=404)
+
+    if request.method == 'DELETE':
+        course.delete()
+        return Response(status=204)
 
 def get_module_detail(requests, mod_code):
     with cache_lock:
@@ -262,4 +314,80 @@ def accept_shared_timetable(request, shared_id):
         return Response({'error': 'Shared timetable not found'}, status=404)
     except Exception as e:
         print("Error accepting shared timetable:", str(e))
+        return Response({'error': str(e)}, status=400)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_completed_courses(request):
+    user = request.user
+    academic_year = request.query_params.get('academic_year')
+    semester = request.query_params.get('semester')
+    
+    courses = CompletedCourse.objects.filter(user=user)
+    if academic_year:
+        courses = courses.filter(academic_year=academic_year)
+    if semester:
+        courses = courses.filter(semester=semester)
+    
+    result = [
+        {
+            'id': course.id,
+            'module_code': course.module_code,
+            'semester': course.semester,
+            'academic_year': course.academic_year,
+            'grade': course.grade,
+            'created_at': course.created_at.isoformat(),
+            'updated_at': course.updated_at.isoformat()
+        }
+        for course in courses
+    ]
+    
+    return Response({'courses': result})
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def add_completed_course(request):
+    try:
+        data = request.data
+        user = request.user
+        
+        # Validate required fields
+        required_fields = ['module_code', 'semester', 'academic_year']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return Response({
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }, status=400)
+        
+        # Create or update completed course
+        course, created = CompletedCourse.objects.update_or_create(
+            user=user,
+            module_code=data['module_code'],
+            semester=data['semester'],
+            defaults={
+                'academic_year': data['academic_year'],
+                'grade': data.get('grade')
+            }
+        )
+        
+        return Response({
+            'message': 'Course added successfully',
+            'id': course.id,
+            'created': created
+        })
+    except Exception as e:
+        print("Error adding completed course:", str(e))
+        return Response({'error': str(e)}, status=400)
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def remove_completed_course(request, course_id):
+    try:
+        course = CompletedCourse.objects.get(id=course_id, user=request.user)
+        course.delete()
+        return Response({'message': 'Course removed successfully'})
+    except CompletedCourse.DoesNotExist:
+        return Response({'error': 'Course not found'}, status=404)
+    except Exception as e:
+        print("Error removing completed course:", str(e))
         return Response({'error': str(e)}, status=400)

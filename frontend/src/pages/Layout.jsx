@@ -45,7 +45,8 @@ export default function Layout() {
               <Link to="/timetable">Timetable</Link>
               <Link to="/friends">Friends</Link>
               <Link to="/shared-timetables">Shared With Me</Link>
-              <Link to="/friend-groups">Friend Groups</Link> 
+              <Link to="/friend-groups">Friend Groups</Link>
+              <Link to="/completed-courses">Completed Courses</Link>
               <button className="logout" onClick={handleLogout}>Logout</button>
 
             </nav>
