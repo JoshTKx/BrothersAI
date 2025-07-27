@@ -21,29 +21,129 @@ from .course_recommender import CourseRecommender
 MODULE_LIST_URL = 'https://api.nusmods.com/v2/2024-2025/moduleList.json'
 MODULE_DETAIL_URL_TEMPLATE = 'https://api.nusmods.com/v2/2024-2025/modules/{}.json'
 
+import logging
+import os
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+class CompletedCourseWrapper:
+    """Wrapper class to match the structure expected by CourseRecommender"""
+    def __init__(self, module_code, grade=None, semester=None, academic_year=None):
+        self.module_code = module_code
+        self.grade = grade
+        self.semester = semester
+        self.academic_year = academic_year
+        print(f"Created CompletedCourseWrapper: {module_code}, {grade}, {semester}, {academic_year}")
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_course_recommendations(request):
     """Get AI-powered course recommendations based on completed courses"""
+    print("=== STARTING get_course_recommendations ===")
+    print(f"User: {request.user}")
+    print(f"User ID: {request.user.id}")
+    
     try:
-        # Get user's completed courses
-        completed_courses = CompletedCourse.objects.filter(user=request.user)
+        # Check if Gemini API key is available
+        gemini_key = os.getenv('GEMINI_API_KEY')
+        print(f"Gemini API Key present: {bool(gemini_key)}")
+        if gemini_key:
+            print(f"Gemini API Key starts with: {gemini_key[:10]}...")
+        else:
+            print("WARNING: No Gemini API Key found in environment!")
+        
+        # Get user's completed courses from database
+        print("Fetching completed courses from database...")
+        completed_courses_db = CompletedCourse.objects.filter(user=request.user)
+        course_count = completed_courses_db.count()
+        print(f"Found {course_count} completed courses in database")
+        
+        if not completed_courses_db.exists():
+            print("ERROR: No completed courses found for user")
+            return Response({
+                'error': 'No completed courses found. Please add some courses first.',
+                'recommendations': []
+            }, status=400)
+        
+        # Log each course found
+        for i, course in enumerate(completed_courses_db):
+            print(f"Course {i+1}: {course.module_code} - {course.grade} - {course.semester} - {course.academic_year}")
+        
+        # Convert Django model instances to CourseRecommender-compatible objects
+        print("Converting courses to CourseRecommender format...")
+        completed_courses = []
+        for course in completed_courses_db:
+            wrapper = CompletedCourseWrapper(
+                module_code=course.module_code,
+                grade=course.grade,
+                semester=str(course.semester),
+                academic_year=course.academic_year
+            )
+            completed_courses.append(wrapper)
+        
+        print(f"Created {len(completed_courses)} course wrappers")
         
         # Initialize recommender
-        recommender = CourseRecommender()
+        print("Initializing CourseRecommender...")
+        try:
+            recommender = CourseRecommender()
+            print("CourseRecommender initialized successfully")
+        except Exception as e:
+            print(f"ERROR initializing CourseRecommender: {e}")
+            import traceback
+            print(traceback.format_exc())
+            return Response({
+                'error': f'Failed to initialize recommendation service: {str(e)}',
+                'recommendations': []
+            }, status=500)
         
         # Get recommendations
-        recommendations = recommender.get_recommendations(completed_courses)
+        print("Getting recommendations from AI...")
+        try:
+            recommendations = recommender.get_recommendations(completed_courses, num_recommendations=5)
+            print(f"Received {len(recommendations) if recommendations else 0} recommendations")
+            
+            if recommendations:
+                print("Recommendations received:")
+                for i, rec in enumerate(recommendations):
+                    print(f"  {i+1}. {rec.get('module_code', 'N/A')} - {rec.get('module_name', 'N/A')}")
+            else:
+                print("No recommendations returned from AI")
+                
+        except Exception as e:
+            print(f"ERROR getting recommendations from AI: {e}")
+            import traceback
+            print(traceback.format_exc())
+            return Response({
+                'error': f'Failed to get recommendations from AI service: {str(e)}',
+                'recommendations': []
+            }, status=500)
         
+        if not recommendations:
+            print("No recommendations generated - returning empty result")
+            return Response({
+                'error': 'No recommendations could be generated at this time. This might be due to invalid module codes or AI service issues.',
+                'recommendations': []
+            }, status=200)
+        
+        print("=== SUCCESS: Returning recommendations ===")
         return Response({
-            'recommendations': recommendations
+            'recommendations': recommendations,
+            'count': len(recommendations),
+            'status': 'success'
         })
+        
     except Exception as e:
+        print(f"=== CRITICAL ERROR in get_course_recommendations: {e} ===")
+        import traceback
+        print(traceback.format_exc())
         return Response({
-            'error': 'Failed to get recommendations',
+            'error': 'Failed to generate recommendations. Please try again later.',
+            'recommendations': [],
             'detail': str(e)
         }, status=500)
-
+    
 module_list_cache = None
 module_details_cache = {}
 cache_lock = Lock()
@@ -391,3 +491,107 @@ def remove_completed_course(request, course_id):
     except Exception as e:
         print("Error removing completed course:", str(e))
         return Response({'error': str(e)}, status=400)
+    
+
+
+# Add this test endpoint to your views.py to verify basic functionality:
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def test_recommendations_setup(request):
+    """Test endpoint to verify recommendations setup"""
+    print("=== TEST ENDPOINT CALLED ===")
+    
+    try:
+        # Test 1: Check user and courses
+        user = request.user
+        print(f"Test 1 - User: {user} (ID: {user.id})")
+        
+        courses = CompletedCourse.objects.filter(user=user)
+        course_count = courses.count()
+        print(f"Test 1 - Found {course_count} courses for user")
+        
+        # Test 2: Check environment
+        gemini_key = os.getenv('GEMINI_API_KEY')
+        print(f"Test 2 - Gemini API Key present: {bool(gemini_key)}")
+        
+        # Test 3: Try to initialize CourseRecommender
+        try:
+            recommender = CourseRecommender()
+            print("Test 3 - CourseRecommender initialized successfully")
+            
+            # Test 4: Check module loading
+            module_count = len(recommender.all_module_codes)
+            print(f"Test 4 - Loaded {module_count} module codes")
+            
+        except Exception as e:
+            print(f"Test 3/4 FAILED - CourseRecommender error: {e}")
+            return Response({
+                'status': 'error',
+                'message': f'CourseRecommender initialization failed: {str(e)}',
+                'tests': {
+                    'user_check': True,
+                    'courses_count': course_count,
+                    'gemini_key_present': bool(gemini_key),
+                    'recommender_init': False,
+                    'modules_loaded': 0
+                }
+            })
+        
+        return Response({
+            'status': 'success',
+            'message': 'All tests passed',
+            'tests': {
+                'user_check': True,
+                'courses_count': course_count,
+                'gemini_key_present': bool(gemini_key),
+                'recommender_init': True,
+                'modules_loaded': module_count
+            },
+            'sample_courses': [
+                {
+                    'id': course.id,
+                    'module_code': course.module_code,
+                    'grade': course.grade,
+                    'semester': str(course.semester),
+                    'academic_year': course.academic_year
+                } for course in courses[:3]  # First 3 courses
+            ]
+        })
+        
+    except Exception as e:
+        print(f"TEST ENDPOINT ERROR: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return Response({
+            'status': 'error',
+            'message': str(e),
+            'tests': {
+                'user_check': False,
+                'courses_count': 0,
+                'gemini_key_present': False,
+                'recommender_init': False,
+                'modules_loaded': 0
+            }
+        })
+
+@api_view(["GET"])
+@permission_classes([AllowAny])  # No authentication required for debugging
+def debug_environment(request):
+    """Debug endpoint to check environment variables"""
+    import os
+    from django.conf import settings
+    
+    gemini_key = os.getenv('GEMINI_API_KEY')
+    
+    return Response({
+        'environment_check': {
+            'GEMINI_API_KEY_from_os_getenv': gemini_key[:10] + "..." if gemini_key else None,
+            'GEMINI_API_KEY_present': bool(gemini_key),
+            'all_env_vars_containing_GEMINI': [
+                key for key in os.environ.keys() if 'GEMINI' in key.upper()
+            ],
+            'django_settings_has_GEMINI_API_KEY': hasattr(settings, 'GEMINI_API_KEY'),
+            'django_settings_GEMINI_API_KEY': getattr(settings, 'GEMINI_API_KEY', 'Not set')[:10] + "..." if hasattr(settings, 'GEMINI_API_KEY') and getattr(settings, 'GEMINI_API_KEY') else 'Not set'
+        }
+    })

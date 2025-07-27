@@ -68,23 +68,92 @@ function CompletedCourses() {
     };
 
     const getRecommendations = async () => {
+        console.log("=== STARTING getRecommendations ===");
+        console.log("Current courses:", courses);
+        console.log("Number of courses:", courses.length);
+
+        if (courses.length === 0) {
+            console.log("ERROR: No courses available");
+            setError('Please add some completed courses first before getting recommendations.');
+            return;
+        }
+
+        console.log("Setting loading state...");
         setLoadingRecommendations(true);
+        setError(''); // Clear any existing errors
+        setRecommendations([]); // Clear previous recommendations
+
         try {
-            const response = await fetchWithToken(`${baseURL}timetableapi/completed-courses/recommendations/`);
-            if (!response.ok) throw new Error('Failed to get recommendations');
+            const url = `${baseURL}timetableapi/completed-courses/recommendations/`;
+            console.log("Making request to:", url);
+            console.log("Base URL:", baseURL);
+
+            console.log("Calling fetchWithToken...");
+            const response = await fetchWithToken(url);
+
+            console.log("Response received:");
+            console.log("- Status:", response.status);
+            console.log("- OK:", response.ok);
+            console.log("- Headers:", Object.fromEntries(response.headers.entries()));
+
+            if (!response.ok) {
+                console.log("Response not OK, attempting to parse error...");
+                let errorData;
+                try {
+                    errorData = await response.json();
+                    console.log("Error data:", errorData);
+                } catch (parseError) {
+                    console.log("Could not parse error response:", parseError);
+                    errorData = {};
+                }
+                throw new Error(errorData.error || `HTTP ${response.status}: Failed to get recommendations`);
+            }
+
+            console.log("Parsing successful response...");
             const data = await response.json();
-            setRecommendations(data.recommendations);
+            console.log("Response data:", data);
+            console.log("Recommendations array:", data.recommendations);
+            console.log("Number of recommendations:", data.recommendations ? data.recommendations.length : 0);
+
+            if (data.recommendations && data.recommendations.length > 0) {
+                console.log("Setting recommendations in state...");
+                setRecommendations(data.recommendations);
+                console.log("Recommendations set successfully");
+
+                // Log each recommendation
+                data.recommendations.forEach((rec, index) => {
+                    console.log(`Recommendation ${index + 1}:`, {
+                        module_code: rec.module_code,
+                        module_name: rec.module_name,
+                        rationale: rec.rationale?.substring(0, 50) + "...",
+                        prerequisites: rec.prerequisites,
+                        suggested_semester: rec.suggested_semester
+                    });
+                });
+            } else {
+                console.log("No recommendations in response");
+                setRecommendations([]);
+                setError('No recommendations could be generated at this time. This might be due to invalid module codes or AI service issues.');
+            }
+
         } catch (err) {
-            setError('Failed to get course recommendations');
-            console.error('Error:', err);
+            console.error("=== ERROR in getRecommendations ===");
+            console.error("Error object:", err);
+            console.error("Error message:", err.message);
+            console.error("Error stack:", err.stack);
+
+            setError(`Failed to get recommendations: ${err.message}`);
+            setRecommendations([]);
         } finally {
+            console.log("Setting loading state to false...");
             setLoadingRecommendations(false);
+            console.log("=== getRecommendations COMPLETE ===");
         }
     };
 
     const handleDelete = async (courseId) => {
         if (!window.confirm('Are you sure you want to remove this course?')) return;
-        
+
         try {
             const response = await fetchWithToken(`${baseURL}timetableapi/completed-courses/${courseId}/`, {
                 method: 'DELETE',
@@ -121,7 +190,7 @@ function CompletedCourses() {
                         <input
                             type="text"
                             value={formData.module_code}
-                            onChange={e => setFormData({...formData, module_code: e.target.value.toUpperCase()})}
+                            onChange={e => setFormData({ ...formData, module_code: e.target.value.toUpperCase() })}
                             placeholder="e.g., CS2040S"
                             required
                         />
@@ -131,7 +200,7 @@ function CompletedCourses() {
                         <input
                             type="text"
                             value={formData.academic_year}
-                            onChange={e => setFormData({...formData, academic_year: e.target.value})}
+                            onChange={e => setFormData({ ...formData, academic_year: e.target.value })}
                             placeholder="e.g., AY22/23"
                             required
                         />
@@ -142,7 +211,7 @@ function CompletedCourses() {
                         <label>Semester</label>
                         <select
                             value={formData.semester}
-                            onChange={e => setFormData({...formData, semester: e.target.value})}
+                            onChange={e => setFormData({ ...formData, semester: e.target.value })}
                             required
                         >
                             <option value="">Select Semester</option>
@@ -157,7 +226,7 @@ function CompletedCourses() {
                         <input
                             type="text"
                             value={formData.grade}
-                            onChange={e => setFormData({...formData, grade: e.target.value.toUpperCase()})}
+                            onChange={e => setFormData({ ...formData, grade: e.target.value.toUpperCase() })}
                             placeholder="e.g., A"
                         />
                     </div>
@@ -174,8 +243,8 @@ function CompletedCourses() {
             <div className="semester-selection">
                 <div className="selector-group">
                     <label>Academic Year:</label>
-                    <select 
-                        value={selectedYear} 
+                    <select
+                        value={selectedYear}
                         onChange={(e) => setSelectedYear(e.target.value)}
                     >
                         <option value="">All Years</option>
@@ -189,8 +258,8 @@ function CompletedCourses() {
                 </div>
                 <div className="selector-group">
                     <label>Semester:</label>
-                    <select 
-                        value={selectedSemester} 
+                    <select
+                        value={selectedSemester}
                         onChange={(e) => setSelectedSemester(e.target.value)}
                     >
                         <option value="">All Semesters</option>
@@ -218,7 +287,7 @@ function CompletedCourses() {
                         {Object.entries(groupedCourses)
                             .filter(([year]) => !selectedYear || year === selectedYear)
                             .sort(([yearA], [yearB]) => yearB.localeCompare(yearA))
-                            .flatMap(([year, semesters]) => 
+                            .flatMap(([year, semesters]) =>
                                 Object.entries(semesters)
                                     .filter(([sem]) => !selectedSemester || sem === selectedSemester)
                                     .sort(([semA], [semB]) => semA.localeCompare(semB))
@@ -249,8 +318,8 @@ function CompletedCourses() {
             {/* Course Recommendations Section */}
             <div className="course-recommendations">
                 <h3>Course Recommendations</h3>
-                <button 
-                    className="get-recommendations-button" 
+                <button
+                    className="get-recommendations-button"
                     onClick={getRecommendations}
                     disabled={loadingRecommendations}
                 >
