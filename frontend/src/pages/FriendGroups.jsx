@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './FriendGroups.css';
+import { Link } from 'react-router-dom';
+
 
 export default function FriendGroups() {
   const [groups, setGroups] = useState([]);
@@ -84,14 +86,15 @@ const handleCreateGroup = async (e) => {
       {success && <div style={{ color: "green", marginBottom: 10 }}>{success}</div>}
       <h2>Your Groups</h2>
       <ul>
-        {groups.length === 0 && <li>No groups yet.</li>}
-        {groups.map(group => (
-          <li key={group.id}>
-            <strong>{group.name}</strong> (Owner: {group.owner})<br />
-            Members: {group.members.join(', ')}
-          </li>
-        ))}
-      </ul>
+          {groups.length === 0 && <li>No groups yet.</li>}
+          {groups.map(group => (
+            <li key={group.id}>
+              <strong>{group.name}</strong> (Owner: {group.owner})<br />
+              Members: {group.members.join(', ')}<br />
+              <Link to={`/friend-groups/${group.id}`}>View Group</Link>
+            </li>
+          ))}
+        </ul>
     </div>
   );
 }
