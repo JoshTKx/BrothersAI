@@ -1,0 +1,74 @@
+.course-recommendations {
+    margin-top: 32px;
+    padding: 24px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.course-recommendations h3 {
+    margin-bottom: 16px;
+    color: #333;
+}
+
+.recommendation-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.recommendation-card {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.recommendation-card h4 {
+    margin: 0 0 8px 0;
+    color: #007bff;
+}
+
+.recommendation-card .module-name {
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
+.recommendation-card .rationale {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.recommendation-card .prerequisites {
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.recommendation-card .semester {
+    font-size: 0.85em;
+    color: #28a745;
+    font-weight: 500;
+}
+
+.get-recommendations-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    margin-bottom: 16px;
+}
+
+.get-recommendations-button:hover {
+    background-color: #218838;
+}
+
+.get-recommendations-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}

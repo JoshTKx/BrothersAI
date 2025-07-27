@@ -1,212 +1,212 @@
 .completed-courses {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
 }
 
 .completed-courses h2 {
-    margin-bottom: 24px;
-    color: #333;
+  margin-bottom: 24px;
+  color: #333;
 }
 
 .add-course-form {
-    background: #f8f9fa;
-    padding: 24px;
-    border-radius: 8px;
-    margin-bottom: 24px;
-    border: 1px solid #e9ecef;
+  background: #f8f9fa;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border: 1px solid #e9ecef;
 }
 
 .form-row {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 16px;
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .form-group {
-    flex: 1;
+  flex: 1;
 }
 
 .form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
 }
 
-.form-group input, .form-group select {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
+.form-group input, 
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
 }
 
 .courses-list {
-    margin-top: 32px;
+  margin-top: 32px;
 }
 
 .semester-selection {
-    margin: 24px 0;
-    padding: 16px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    display: flex;
-    gap: 24px;
+  margin: 24px 0;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  display: flex;
+  gap: 24px;
 }
 
 .selector-group {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .selector-group label {
-    font-weight: 500;
-    min-width: 100px;
+  font-weight: 500;
+  min-width: 100px;
 }
 
 .selector-group select {
-    padding: 8px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    min-width: 150px;
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  min-width: 150px;
 }
 
 /* Table Styles */
 .courses-table-container {
-    margin-top: 24px;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-top: 24px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .courses-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
 }
 
 .courses-table th {
-    background: #f8f9fa;
-    padding: 12px;
-    text-align: left;
-    font-weight: 600;
-    border-bottom: 2px solid #dee2e6;
+  background: #f8f9fa;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #dee2e6;
 }
 
 .courses-table td {
-    padding: 12px;
-    border-bottom: 1px solid #dee2e6;
+  padding: 12px;
+  border-bottom: 1px solid #dee2e6;
 }
 
 .courses-table tr:hover {
-    background-color: #f8f9fa;
+  background-color: #f8f9fa;
 }
 
 .delete-button-table {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
 }
 
 .delete-button-table:hover {
-    background-color: #c82333;
+  background-color: #c82333;
+}
+
+/* Semester section styles */
+.semester-section {
+  margin-bottom: 24px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.semester-section h4 {
+  margin-bottom: 12px;
+  color: #495057;
+}
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.course-card {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  position: relative;
+}
+
+.course-card .module-code {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.course-card .grade {
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.delete-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.delete-button:hover {
+  background: #fee2e2;
+}
+
+button {
+  background: #0d6efd;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+button:hover {
+  background: #0b5ed7;
+}
+
+button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .form-row {
-        flex-direction: column;
-        gap: 12px;
-    }
-    
-    .semester-selection {
-        flex-direction: column;
-        gap: 16px;
-    }
-    
-    .courses-table {
-        display: block;
-        overflow-x: auto;
-    }
-    
-    .courses-table th,
-    .courses-table td {
-        min-width: 120px;
-    }
-}
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #e9ecef;
-}
-
-.semester-section {
-    margin-bottom: 24px;
-}
-
-.semester-section h4 {
-    margin-bottom: 12px;
-    color: #495057;
-}
-
-.courses-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .semester-selection {
+    flex-direction: column;
     gap: 16px;
-}
-
-.course-card {
-    background: white;
-    padding: 16px;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-    position: relative;
-}
-
-.course-card .module-code {
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.course-card .grade {
-    color: #6c757d;
-    font-size: 0.9em;
-}
-
-.delete-button {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: none;
-    border: none;
-    color: #dc3545;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-}
-
-.delete-button:hover {
-    background: #fee2e2;
-}
-
-button {
-    background: #0d6efd;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-button:hover {
-    background: #0b5ed7;
-}
-
-button:disabled {
-    background: #6c757d;
-    cursor: not-allowed;
+  }
+  
+  .courses-table {
+    display: block;
+    overflow-x: auto;
+  }
+  
+  .courses-table th,
+  .courses-table td {
+    min-width: 120px;
+  }
 }

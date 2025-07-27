@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './CompletedCourses.css';
+import './CourseRecommendations.css';
 import { fetchWithToken } from '../utils/auth';
 
 const baseURL = 'http://127.0.0.1:8000/';
@@ -17,6 +18,8 @@ function CompletedCourses() {
     const [submitting, setSubmitting] = useState(false);
     const [selectedYear, setSelectedYear] = useState('');
     const [selectedSemester, setSelectedSemester] = useState('');
+    const [recommendations, setRecommendations] = useState([]);
+    const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
     // Fetch completed courses
     useEffect(() => {
@@ -61,6 +64,21 @@ function CompletedCourses() {
             console.error('Error:', err);
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const getRecommendations = async () => {
+        setLoadingRecommendations(true);
+        try {
+            const response = await fetchWithToken(`${baseURL}timetableapi/completed-courses/recommendations/`);
+            if (!response.ok) throw new Error('Failed to get recommendations');
+            const data = await response.json();
+            setRecommendations(data.recommendations);
+        } catch (err) {
+            setError('Failed to get course recommendations');
+            console.error('Error:', err);
+        } finally {
+            setLoadingRecommendations(false);
         }
     };
 
@@ -226,6 +244,34 @@ function CompletedCourses() {
                             )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Course Recommendations Section */}
+            <div className="course-recommendations">
+                <h3>Course Recommendations</h3>
+                <button 
+                    className="get-recommendations-button" 
+                    onClick={getRecommendations}
+                    disabled={loadingRecommendations}
+                >
+                    {loadingRecommendations ? 'Getting Recommendations...' : 'Get AI Course Recommendations'}
+                </button>
+
+                <div className="recommendation-cards">
+                    {recommendations.map((rec, index) => (
+                        <div key={index} className="recommendation-card">
+                            <h4>{rec.module_code}</h4>
+                            <div className="module-name">{rec.module_name}</div>
+                            <div className="rationale">{rec.rationale}</div>
+                            <div className="prerequisites">
+                                <strong>Prerequisites:</strong> {rec.prerequisites || 'None'}
+                            </div>
+                            <div className="semester">
+                                Suggested: {rec.suggested_semester}
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
