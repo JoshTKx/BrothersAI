@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.views import APIView
+from django.http import JsonResponse
 
 
 
@@ -153,25 +154,32 @@ class FriendGroupListCreateView(generics.ListCreateAPIView):
         # Optionally add the owner as a member
         group.members.set(list(members) + [self.request.user])
 
-class FriendGroupDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = FriendGroupSerializer
-    permission_classes = [IsAuthenticated]
+class FriendGroupDetailView(APIView):
+    def get(self, request, pk):
+        try:
+            group = FriendGroup.objects.get(pk=pk)
+            members = group.members.all().values('username', 'email')  # Fetch members with username and email
+            return JsonResponse({
+                'id': group.id,
+                'name': group.name,
+                'owner': group.owner.username,  # Include owner's username
+                'members': list(members),  # Convert QuerySet to list
+                'created_at': group.created_at,
+            })
+        except FriendGroup.DoesNotExist:
+            return JsonResponse({'error': 'Group not found'}, status=404)
 
-    def get_queryset(self):
-        return FriendGroup.objects.filter(owner=self.request.user)
-
-# Group Meetups
 class GroupMeetupListCreateView(generics.ListCreateAPIView):
     serializer_class = GroupMeetupSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Only meetups for groups the user is a member of
-        return GroupMeetup.objects.filter(group__members=self.request.user)
+        group_id = self.request.query_params.get('group')
+        return GroupMeetup.objects.filter(group_id=group_id)
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-
+    def get_serializer_context(self):
+        return {'request': self.request}
+    
 class GroupMeetupDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = GroupMeetupSerializer
     permission_classes = [IsAuthenticated]
@@ -179,16 +187,17 @@ class GroupMeetupDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return GroupMeetup.objects.filter(group__members=self.request.user)
 
-# Group Todos
+
 class GroupTodoListCreateView(generics.ListCreateAPIView):
     serializer_class = GroupTodoSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return GroupTodo.objects.filter(group__members=self.request.user)
+        group_id = self.request.query_params.get('group')
+        return GroupTodo.objects.filter(group_id=group_id)
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+    def get_serializer_context(self):
+        return {'request': self.request} 
 
 class GroupTodoDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = GroupTodoSerializer

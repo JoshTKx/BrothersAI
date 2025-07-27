@@ -60,12 +60,15 @@ class GroupMeetup(models.Model):
     description = models.TextField(blank=True)
     location = models.CharField(max_length=255)
     time = models.DateTimeField()
+    completed = models.BooleanField(default=False)
     created_by = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} for {self.group.name} at {self.time}"
+        return f"{self.title} at {self.location} for {self.group.name}"
 
+    def __str__(self):
+        return f"{self.title} at {self.location} for {self.group.name}"
 class GroupTodo(models.Model):
     group = models.ForeignKey(FriendGroup, on_delete=models.CASCADE, related_name='group_todos')
     title = models.CharField(max_length=255)

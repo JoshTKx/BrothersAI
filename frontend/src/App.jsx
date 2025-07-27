@@ -12,6 +12,8 @@ import SharedTimetables from './pages/SharedTimetables';
 import RequireAuth from "./components/RequireAuth";
 import FriendGroups from './pages/FriendGroups';
 import CompletedCourses from './pages/CompletedCourses';
+import GroupView from './pages/GroupView';
+
 
 function App() {
     return (
@@ -27,6 +29,7 @@ function App() {
                     <Route path="/shared-timetables" element={<RequireAuth><SharedTimetables /></RequireAuth>} />
                     <Route path="friend-groups" element={<RequireAuth><FriendGroups /></RequireAuth>} />
                     <Route path="completed-courses" element={<RequireAuth><CompletedCourses /></RequireAuth>} />
+                    <Route path="friend-groups/:groupId" element={<RequireAuth><GroupView /></RequireAuth>} />
                     </Route>
             </Routes>
         </BrowserRouter>

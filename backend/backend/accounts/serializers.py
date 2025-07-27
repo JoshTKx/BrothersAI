@@ -84,19 +84,25 @@ class FriendGroupSerializer(serializers.ModelSerializer):
         read_only_fields = ['owner', 'created_at']
 
 class GroupMeetupSerializer(serializers.ModelSerializer):
-    group = serializers.PrimaryKeyRelatedField(queryset=FriendGroup.objects.all())
-    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
-
     class Meta:
         model = GroupMeetup
-        fields = ['id', 'group', 'title', 'description', 'location', 'time', 'created_by', 'created_at']
-        read_only_fields = ['created_by', 'created_at']
+        fields = ['id', 'group', 'title', 'description', 'location', 'time', 'completed', 'created_at']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        validated_data['created_by'] = request.user  # Set the `created_by` field to the authenticated user
+        return super().create(validated_data)
 
 class GroupTodoSerializer(serializers.ModelSerializer):
-    group = serializers.PrimaryKeyRelatedField(queryset=FriendGroup.objects.all())
-    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
-
     class Meta:
         model = GroupTodo
-        fields = ['id', 'group', 'title', 'completed', 'created_by', 'created_at']
-        read_only_fields = ['created_by', 'created_at']
+        fields = ['id', 'group', 'title', 'completed', 'created_at']  # Exclude `created_by`
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        validated_data['created_by'] = request.user  # Set the `created_by` field to the authenticated user
+        return super().create(validated_data)
+
+    class Meta:
+         model = GroupTodo
+         fields = ['id', 'group', 'title', 'completed', 'created_at']

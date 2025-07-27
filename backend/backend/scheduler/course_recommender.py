@@ -24,14 +24,14 @@ class CourseRecommender:
             print(f"ERROR configuring Gemini API: {e}")
             raise
         
-        # --- Caching and URL Setup ---
+        # Caching and URL Setup 
         self.module_cache = {}
         self.all_module_codes = set()
         self.module_list_url = 'https://api.nusmods.com/v2/2024-2025/moduleList.json'
         self.module_detail_url = 'https://api.nusmods.com/v2/2024-2025/modules/{}.json'
         print("URLs configured")
         
-        # --- Pre-load all valid module codes for validation ---
+        # Pre-load all valid module codes for validation 
         print("Loading valid module codes...")
         self._load_valid_module_codes()
         print(f"CourseRecommender initialization complete. {len(self.all_module_codes)} modules loaded.")

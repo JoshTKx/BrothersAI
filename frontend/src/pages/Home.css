@@ -1,0 +1,66 @@
+.dashboard {
+  display: flex;
+  flex-direction: column; /* Stack card and timetable vertically */
+  gap: 20px;
+}
+
+.card {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.timetable-view {
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.timetable-wrapper {
+  overflow-x: auto;
+}
+
+.timetable-grid {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr); 
+  grid-auto-rows: 50px;
+  gap: 1px;
+  background-color: #e5e5e5;
+}
+
+.timetable-cell {
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timetable-header {
+  font-weight: bold;
+  background-color: #f0f0f0;
+}
+
+.day-header {
+  font-weight: bold;
+  background-color: #f0f0f0;
+}
+
+.timetable-lesson {
+  background-color: #60a5fa;
+  color: #ffffff;
+  border-radius: 4px;
+  padding: 5px;
+  text-align: center;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  grid-column: var(--lesson-column); /* Use CSS variables for positioning */
+  grid-row: var(--lesson-row);
+}
+
+.lesson-content strong {
+  font-size: 1rem;
+} 
