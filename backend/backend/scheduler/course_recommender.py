@@ -1,4 +1,3 @@
-
 import os
 import json
 import requests
@@ -27,8 +26,8 @@ class CourseRecommender:
         # Caching and URL Setup 
         self.module_cache = {}
         self.all_module_codes = set()
-        self.module_list_url = 'https://api.nusmods.com/v2/2024-2025/moduleList.json'
-        self.module_detail_url = 'https://api.nusmods.com/v2/2024-2025/modules/{}.json'
+        self.module_list_url = 'https://api.nusmods.com/v2/2025-2026/moduleList.json'
+        self.module_detail_url = 'https://api.nusmods.com/v2/2025-2026/modules/{}.json'
         print("URLs configured")
         
         # Pre-load all valid module codes for validation 
@@ -118,6 +117,56 @@ class CourseRecommender:
         print(f"Successfully formatted {len(formatted_courses)} courses")
         return formatted_courses
 
+    def validate_and_enrich_recommendations(self, recommendations):
+        """Validate recommended module codes and enrich with actual NUSMods data."""
+        print(f"=== Validating {len(recommendations)} recommendations ===")
+        
+        validated_recommendations = []
+        
+        for i, rec in enumerate(recommendations):
+            module_code = rec.get('module_code', '').strip().upper()
+            print(f"Validating recommendation {i+1}: {module_code}")
+            
+            if not module_code:
+                print(f"Skipping recommendation {i+1}: No module code provided")
+                continue
+                
+            # Check if module code exists in NUSMods
+            if self.all_module_codes and module_code not in self.all_module_codes:
+                print(f"WARNING: Invalid module code '{module_code}' - not found in NUSMods 2025-2026")
+                
+                # Try to find similar module codes
+                similar_codes = [code for code in self.all_module_codes if module_code[:4] in code][:3]
+                if similar_codes:
+                    print(f"Similar valid codes found: {similar_codes}")
+                    # You could optionally replace with the first similar code:
+                    # module_code = similar_codes[0]
+                    # print(f"Replacing with: {module_code}")
+                else:
+                    print(f"No similar codes found for {module_code}")
+                
+                continue  # Skip invalid modules
+            
+            # Get actual module details from NUSMods
+            module_details = self.get_module_details(module_code)
+            if module_details:
+                # Use actual module name from NUSMods instead of AI-generated name
+                validated_rec = {
+                    'module_code': module_code,
+                    'module_name': module_details.get('title', rec.get('module_name', 'Unknown')),
+                    'rationale': rec.get('rationale', 'No rationale provided'),
+                    'prerequisites': rec.get('prerequisites', 'None'),
+                    'suggested_semester': rec.get('suggested_semester', 'Not specified'),
+                    'description': module_details.get('description', '')[:200] + '...' if module_details.get('description') else ''
+                }
+                validated_recommendations.append(validated_rec)
+                print(f"Validated: {module_code} - {module_details.get('title')}")
+            else:
+                print(f"Could not fetch details for {module_code}, skipping")
+        
+        print(f"Successfully validated {len(validated_recommendations)} out of {len(recommendations)} recommendations")
+        return validated_recommendations
+
     def get_recommendations(self, completed_courses, num_recommendations=5):
         """Get AI-powered course recommendations using the Gemini API."""
         print(f"=== Getting {num_recommendations} recommendations ===")
@@ -131,9 +180,14 @@ class CourseRecommender:
 
         print(f"Formatted {len(formatted_courses)} courses for AI processing")
 
+        # Include sample of valid module codes in the prompt to guide the AI
+        sample_modules = list(self.all_module_codes)[:20] if self.all_module_codes else []
+        
         prompt = f"""
 You are an expert course advisor for National University of Singapore (NUS) students.
-Based on the following list of completed courses, please recommend {num_recommendations} future modules that the student might be interested in taking.
+Based on the following list of completed courses, please recommend {num_recommendations * 2} future modules that the student might be interested in taking.
+
+IMPORTANT: You must only recommend modules that exist in the NUS 2025-2026 academic year. Here are some examples of valid module codes: {', '.join(sample_modules)}.
 
 Your recommendations should consider the student's academic history, potential interests revealed by their past choices, and prerequisite alignment.
 
@@ -141,11 +195,13 @@ Completed Courses:
 {json.dumps(formatted_courses, indent=2)}
 
 Please provide your response as a valid JSON array. Each object in the array should represent a single course recommendation and must contain the following fields:
-- "module_code": The official module code (e.g., "CS2040S").
+- "module_code": The official NUS module code (e.g., "CS2040S"). MUST be a valid 2025-2026 module code.
 - "module_name": The full name of the module.
 - "rationale": A brief, clear explanation for why this module is a good recommendation for the student.
 - "prerequisites": A string listing the necessary prerequisites, or "None" if there are no official prerequisites.
 - "suggested_semester": The semester (e.g., "Year 3, Semester 1") when it would be ideal for the student to take this module.
+
+Only recommend modules you are confident exist in NUS 2025-2026. If unsure, err on the side of caution.
 """
 
         print("Prompt created, sending to Gemini API...")
@@ -180,14 +236,20 @@ Please provide your response as a valid JSON array. Each object in the array sho
             
             # Parse the JSON response
             print("Parsing JSON response...")
-            recommendations = json.loads(response.text)
-            print(f"Successfully parsed {len(recommendations)} recommendations")
+            raw_recommendations = json.loads(response.text)
+            print(f"Successfully parsed {len(raw_recommendations)} raw recommendations")
             
-            # Log each recommendation
-            for i, rec in enumerate(recommendations):
-                print(f"Recommendation {i+1}: {rec.get('module_code', 'N/A')} - {rec.get('module_name', 'N/A')}")
+            # Validate and enrich recommendations
+            validated_recommendations = self.validate_and_enrich_recommendations(raw_recommendations)
             
-            return recommendations
+            # Return only the requested number of recommendations
+            final_recommendations = validated_recommendations[:num_recommendations]
+            
+            # Log final recommendations
+            for i, rec in enumerate(final_recommendations):
+                print(f"Final Recommendation {i+1}: {rec.get('module_code', 'N/A')} - {rec.get('module_name', 'N/A')}")
+            
+            return final_recommendations
             
         except json.JSONDecodeError as e:
             print(f"ERROR: Failed to parse JSON response from Gemini: {e}")
