@@ -139,9 +139,7 @@ class CourseRecommender:
                 similar_codes = [code for code in self.all_module_codes if module_code[:4] in code][:3]
                 if similar_codes:
                     print(f"Similar valid codes found: {similar_codes}")
-                    # You could optionally replace with the first similar code:
-                    # module_code = similar_codes[0]
-                    # print(f"Replacing with: {module_code}")
+        
                 else:
                     print(f"No similar codes found for {module_code}")
                 
