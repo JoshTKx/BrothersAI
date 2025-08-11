@@ -13,6 +13,7 @@ import RequireAuth from "./components/RequireAuth";
 import FriendGroups from './pages/FriendGroups';
 import CompletedCourses from './pages/CompletedCourses';
 import GroupView from './pages/GroupView';
+import Data from './pages/Data';
 
 
 function App() {

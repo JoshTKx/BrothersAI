@@ -125,8 +125,9 @@ export default function GroupView() {
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  // Render guards: error first, then loading/data
   if (error) return <div className="error">{error}</div>;
+  if (loading || !groupDetails) return <div className="loading">Loading...</div>;
 
   return (
     <div className="group-view">

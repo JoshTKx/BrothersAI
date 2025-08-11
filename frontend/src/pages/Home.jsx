@@ -156,9 +156,9 @@ export default function Home() {
               <p>
                 <strong>Email:</strong> {user.email}
               </p>
-              <p>
+              <div>
                 <TodoList/>
-              </p>
+              </div>
             </div>
             
           </>
